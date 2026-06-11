@@ -6,7 +6,7 @@ import { Card, Spinner, EmptyState } from "@/components/common/Card";
 import { ActionBadge } from "@/components/common/StatusBadge";
 import { Select } from "@/components/common/Controls";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { ShieldCheck, Plus, Trash, Sliders, Lightning, X } from "@phosphor-icons/react";
 
@@ -62,7 +62,9 @@ function RuleDialog({ onCreated }) {
         </button>
       </DialogTrigger>
       <DialogContent className="max-w-lg border-white/10 bg-popover">
-        <DialogHeader><DialogTitle className="font-heading text-white">Create trust policy</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="font-heading text-white">Create trust policy</DialogTitle>
+          <DialogDescription className="text-muted-foreground text-sm">Define conditions that trigger an action when all match.</DialogDescription>
+        </DialogHeader>
         <div className="space-y-4">
           <label className="block">
             <span className="data-label">Rule name</span>

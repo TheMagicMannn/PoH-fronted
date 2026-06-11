@@ -17,13 +17,14 @@ export default function Register() {
   const submit = async (e) => {
     e.preventDefault();
     setError(""); setLoading(true);
+    localStorage.setItem("poh_just_registered", "1");
     const res = await register({
       name: form.name.trim(), email: form.email.trim(),
       company: form.company.trim(), password: form.password,
     });
     setLoading(false);
-    if (res.ok) navigate("/onboarding");
-    else setError(res.error);
+    if (res.ok) navigate("/onboarding", { replace: true });
+    else { localStorage.removeItem("poh_just_registered"); setError(res.error); }
   };
 
   return (

@@ -5,7 +5,7 @@ import api, { fetcher } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Card, Spinner, SectionTitle } from "@/components/common/Card";
 import { Select } from "@/components/common/Controls";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { fmtDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { UserPlus, Trash, ShieldCheck, Scroll, Gauge } from "@phosphor-icons/react";
@@ -32,7 +32,9 @@ function InviteDialog() {
         <button data-testid="invite-member-button" className="flex items-center gap-2 rounded-md border border-white/10 bg-surface px-3 py-1.5 text-sm font-medium text-white hover:border-white/25"><UserPlus size={16} /> Invite</button>
       </DialogTrigger>
       <DialogContent className="max-w-md border-white/10 bg-popover">
-        <DialogHeader><DialogTitle className="font-heading text-white">Invite teammate</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="font-heading text-white">Invite teammate</DialogTitle>
+          <DialogDescription className="text-muted-foreground text-sm">Add a member to this workspace with a role.</DialogDescription>
+        </DialogHeader>
         <div className="space-y-3">
           {[["name", "Full name", "text"], ["email", "Work email", "email"], ["password", "Temp password", "text"]].map(([k, label, type]) => (
             <label key={k} className="block">

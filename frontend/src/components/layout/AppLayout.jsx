@@ -1,8 +1,17 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 
 export default function AppLayout() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (localStorage.getItem("poh_just_registered")) {
+      localStorage.removeItem("poh_just_registered");
+      navigate("/onboarding", { replace: true });
+    }
+  }, [navigate]);
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#08090A]">
       <Sidebar />

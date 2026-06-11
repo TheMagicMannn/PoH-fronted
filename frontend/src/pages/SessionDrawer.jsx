@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import api, { fetcher } from "@/lib/api";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { TrustGauge, ReasonCodeList } from "@/components/common/Score";
 import { StatusBadge, ActionBadge } from "@/components/common/StatusBadge";
 import { Spinner } from "@/components/common/Card";
@@ -46,6 +46,8 @@ export default function SessionDrawer({ sessionId, open, onClose }) {
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="w-full sm:max-w-xl border-l border-white/10 bg-[#0A0B0D] p-0 overflow-y-auto">
+        <SheetTitle className="sr-only">Session details</SheetTitle>
+        <SheetDescription className="sr-only">Forensic breakdown of the selected session</SheetDescription>
         {isLoading || !s ? (
           <Spinner />
         ) : (
