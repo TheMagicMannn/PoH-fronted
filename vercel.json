@@ -1,0 +1,17 @@
+{
+  "buildCommand": "yarn build",
+  "devCommand": "yarn start",
+  "installCommand": "yarn install",
+  "framework": "react",
+  "outputDirectory": "./frontend/build",
+  "rootDirectory": "frontend",
+  "env": [],
+  "envPrefix": "REACT_APP_",
+  "regions": ["iad1"],
+  "functions": {
+    "api/**/*.js": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  }
+}
