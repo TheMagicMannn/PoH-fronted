@@ -1,0 +1,146 @@
+{
+  "project_name": "PoH - Fraud Detection & Trust Intelligence",
+  "theme": "dark",
+  "archetype": "Archetype 2: The Performance Pro / Archetype 4: Swiss & High-Contrast (Hybrid for Forensic Command-Center)",
+  "emotional_tone": "Authoritative, Secure, Precise, Forensic, Action-Oriented",
+  "design_principles": [
+    "High Signal Density: Pack information tightly but structure it meticulously using grids.",
+    "Color is Function Only: The UI is 95% monochrome. Color only exists to indicate trust status (Trusted, Suspicious, Fraudulent, Review).",
+    "Explainability First: Never show a raw score without its confidence interval and reason codes.",
+    "Forensic but Accessible: Use monospace fonts for data and hashes, but keep headers plain and readable."
+  ],
+  "typography": {
+    "fonts": {
+      "headings": "Chivo",
+      "body": "IBM Plex Sans",
+      "monospace": "IBM Plex Mono"
+    },
+    "hierarchy": {
+      "h1": "text-3xl sm:text-4xl font-bold tracking-tight text-white",
+      "h2": "text-xl sm:text-2xl font-semibold tracking-tight text-slate-100",
+      "h3": "text-lg font-medium text-slate-200",
+      "body": "text-sm text-slate-400 leading-relaxed",
+      "data_label": "text-xs font-mono uppercase tracking-[0.2em] text-slate-500",
+      "data_value": "text-lg font-mono font-medium text-slate-100"
+    },
+    "rules": [
+      "Use IBM Plex Mono for all scores, IP addresses, reason codes, and timestamps.",
+      "Tight letter spacing on headings (tracking-tight).",
+      "Overlines/Labels MUST be Uppercase + Tiny + Wide Spacing (tracking-[0.2em])."
+    ]
+  },
+  "colors": {
+    "background": {
+      "base": "#08090A",
+      "surface": "#121417",
+      "surface_hover": "#1A1D21",
+      "glass": "rgba(18, 20, 23, 0.7)"
+    },
+    "borders": {
+      "default": "rgba(255, 255, 255, 0.08)",
+      "focus": "rgba(255, 255, 255, 0.25)"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#94A3B8",
+      "tertiary": "#64748B",
+      "disabled": "#334155"
+    },
+    "semantic": {
+      "trusted": {
+        "text": "#34D399",
+        "bg": "rgba(52, 211, 153, 0.1)",
+        "border": "rgba(52, 211, 153, 0.2)"
+      },
+      "suspicious": {
+        "text": "#FBBF24",
+        "bg": "rgba(251, 191, 36, 0.1)",
+        "border": "rgba(251, 191, 36, 0.2)"
+      },
+      "fraudulent": {
+        "text": "#F87171",
+        "bg": "rgba(248, 113, 113, 0.1)",
+        "border": "rgba(248, 113, 113, 0.2)"
+      },
+      "review": {
+        "text": "#60A5FA",
+        "bg": "rgba(96, 165, 250, 0.1)",
+        "border": "rgba(96, 165, 250, 0.2)"
+      }
+    },
+    "rules": [
+      "Never use pure black or pure gray. Always tint backgrounds slightly with blue (#08090A) to feel active.",
+      "Primary actions (like 'Block' or 'Observe') should match semantic colors, avoiding generic primary blues."
+    ]
+  },
+  "spacing_and_layout": {
+    "grid_strategy": "The Control Room Grid",
+    "container_padding": "p-6",
+    "gap": "gap-4",
+    "radius": "rounded-md",
+    "rules": [
+      "Strict grid hierarchy, dense and compact spacing.",
+      "Max 6px border-radius (rounded-md) for a sharp, forensic feel.",
+      "Use technical grid borders: border-collapse style with subtle borders on right and bottom of items.",
+      "Containers with borders must have internal padding (p-4 or p-6) to prevent text collision."
+    ]
+  },
+  "components": {
+    "surfaces": [
+      "Dashboard Cards: Flat background (#121417), 1px subtle border, no shadow.",
+      "Sticky Headers: Glassmorphism (backdrop-blur-xl bg-[#08090A]/70) with 1px bottom border."
+    ],
+    "charts": "Shadcn/Recharts customized to use strictly the semantic color palette (Trusted/Suspicious/Fraudulent).",
+    "tables": "Dense rows, monospace text for values, sticky header. Hover state must highlight the entire row slightly (bg-surface_hover).",
+    "buttons": "Sharp edges (rounded-md). Subtle 1px solid borders. Hover state text must explicitly be defined (e.g. hover:text-white)."
+  },
+  "motion": {
+    "transitions": "transition-all duration-200 ease-in-out",
+    "micro_interactions": "Hover states on all rows and cards slightly lift background color and border brightness. No bouncy animations."
+  },
+  "icons": {
+    "library": "@phosphor-icons/react",
+    "style": "duotone or regular, depending on emphasis. Dense technical interface benefits from Phosphor's crisp geometry.",
+    "installation": "yarn add @phosphor-icons/react"
+  },
+  "media": {
+    "image_urls": {
+      "login_background": {
+        "url": "https://images.unsplash.com/photo-1578662996442-48f60103fc96?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTF8MHwxfHNlYXJjaHwyfHxkYXJrJTIwYWJzdHJhY3QlMjB0ZXh0dXJlJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3ODExNDkwODR8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Subtle dark abstract texture for the JWT login/signup screens to avoid flat black backgrounds.",
+        "category": "background"
+      },
+      "team_avatars": [
+        {
+          "url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MTJ8MHwxfHNlYXJjaHwyfHxwcm9mZXNzaW9uYWwlMjBoZWFkc2hvdCUyMHBvcnRyYWl0fGVufDB8fHx8MTc4MTAxODQ4Nnww&ixlib=rb-4.1.0&q=85",
+          "description": "User profile avatar for the workspace navigation/settings.",
+          "category": "avatar"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MTJ8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjBoZWFkc2hvdCUyMHBvcnRyYWl0fGVufDB8fHx8MTc4MTAxODQ4Nnww&ixlib=rb-4.1.0&q=85",
+          "description": "Secondary user profile avatar for audit logs or team tables.",
+          "category": "avatar"
+        }
+      ]
+    },
+    "rules": [
+      "Use actual logos (SVG paths or external brand icons) for GA4, Google Ads, Meta Ad integrations. Do not use placeholder text."
+    ]
+  },
+  "testing": {
+    "rules": [
+      "All interactive and key informational elements MUST include a data-testid attribute.",
+      "Convention: kebab-case, role-based. Example: data-testid=\"traffic-quality-chart\" or data-testid=\"block-session-button\"."
+    ]
+  },
+  "instructions_to_main_agent": [
+    "This is a dark-theme, forensic-style SaaS application. Do not use light mode or generic SaaS templates.",
+    "Make heavy use of IBM Plex Mono for data density (reason codes, IPs, scores, confidence levels).",
+    "Never show a raw score without context. Always pair a score with a semantic color (e.g., Red for Fraud) and a reason code pill.",
+    "Do not use generic blue/purple gradients. Color is for signaling threat levels only.",
+    "Implement the layout with the 'Control Room Grid' philosophy: tight gaps (gap-4), strict column alignment, every pixel utilized.",
+    "Ensure the login/signup uses the abstract background image and JWT auth screens are implemented.",
+    "Install and use @phosphor-icons/react for iconography.",
+    "All components MUST use pure Tailwind styling integrated with Shadcn conventions, bypassing default border-radii for sharper edges (rounded-md max)."
+  ]
+}
