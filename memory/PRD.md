@@ -21,6 +21,7 @@ Build "PoH", a web-based fraud detection & trust intelligence SaaS for performan
 - Head of Growth / Paid Media Manager (campaign trust + ROAS), RevOps/Sales Ops (lead quality), E-commerce growth (fake sessions/checkout), Fraud/Risk lead (later).
 
 ## What's implemented (2026-06-11)
+- ✅ IPQS real-time IP threat-intel enrichment wired into live ingestion (proxy/VPN/Tor/datacenter → scoring signals + `ip_intel` on session docs). Regression tests: `backend/tests/test_ipqs_wiring.py` (6 pass).
 - ✅ Auth (register→new workspace+SDK key→onboarding; login; me; logout; refresh; forgot/reset; brute force).
 - ✅ Executive Overview: KPIs (sessions, invalid traffic %, wasted spend, invalid conversion %, blocked), trend area chart, trust donut, fraud-by-source, top reason codes, range selector.
 - ✅ Session Intelligence: filterable/paginated table + forensic detail drawer (trust gauge, reason codes, device/behavioral signals, campaign mapping, manual Trust/Review/Block).
@@ -35,6 +36,7 @@ Build "PoH", a web-based fraud detection & trust intelligence SaaS for performan
 - ✅ Testing: backend 26/26 pytest pass; frontend flows verified; register→onboarding + a11y fixes applied.
 
 ## Status of integrations
+- IPQualityScore (IPQS): **LIVE / WIRED** — server-side proxy/VPN/Tor/datacenter enrichment on `/api/collect` + `/api/convert`. Real client IP resolved via `X-Forwarded-For`/`X-Real-IP`. Per-IP results cached in `ip_reputation` with TTL (default 24h) to conserve credits. Graceful no-op when key/credits absent. Key stored in `IPQS_API_KEY`. (User's IPQS account currently shows "insufficient credits" — enrichment activates automatically once credits are topped up.)
 - GA4 / Google Ads / Meta Ads / Webhook / HubSpot: **SIMULATED** (UI + persisted state + fake sync metrics). Real OAuth pending user credentials.
 
 ## Prioritized backlog
