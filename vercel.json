@@ -2,7 +2,7 @@
   "installCommand": "yarn --cwd frontend install",
   "buildCommand": "yarn --cwd frontend build",
   "devCommand": "yarn --cwd frontend start",
-  "framework": "react",
+  "framework": "create-react-app",
   "outputDirectory": "frontend/build",
   "env": {},
   "regions": ["iad1"],
