@@ -5,6 +5,14 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { Spinner } from "@/components/common/Card";
 import AppLayout from "@/components/layout/AppLayout";
 
+import MarketingLayout from "@/components/marketing/MarketingLayout";
+import Home from "@/pages/marketing/Home";
+import About from "@/pages/marketing/About";
+import Products from "@/pages/marketing/Products";
+import Pricing from "@/pages/marketing/Pricing";
+import Resources from "@/pages/marketing/Resources";
+import Support from "@/pages/marketing/Support";
+
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
 import Overview from "@/pages/Overview";
@@ -35,7 +43,7 @@ function Protected({ children }) {
 function PublicOnly({ children }) {
   const { user } = useAuth();
   if (user === null) return <FullScreenLoader />;
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to="/app" replace />;
   return children;
 }
 
@@ -45,19 +53,33 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
+            {/* Public marketing site */}
+            <Route element={<MarketingLayout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/resources" element={<Resources />} />
+              <Route path="/support" element={<Support />} />
+            </Route>
+
+            {/* Auth */}
             <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
             <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
-            <Route element={<Protected><AppLayout /></Protected>}>
-              <Route path="/" element={<Overview />} />
-              <Route path="/sessions" element={<Sessions />} />
-              <Route path="/conversions" element={<Conversions />} />
-              <Route path="/campaigns" element={<Campaigns />} />
-              <Route path="/rules" element={<Rules />} />
-              <Route path="/investigations" element={<Investigations />} />
-              <Route path="/integrations" element={<Integrations />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/onboarding" element={<Onboarding />} />
+
+            {/* Dashboard application */}
+            <Route path="/app" element={<Protected><AppLayout /></Protected>}>
+              <Route index element={<Overview />} />
+              <Route path="sessions" element={<Sessions />} />
+              <Route path="conversions" element={<Conversions />} />
+              <Route path="campaigns" element={<Campaigns />} />
+              <Route path="rules" element={<Rules />} />
+              <Route path="investigations" element={<Investigations />} />
+              <Route path="integrations" element={<Integrations />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="onboarding" element={<Onboarding />} />
             </Route>
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

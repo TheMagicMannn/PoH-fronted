@@ -72,3 +72,52 @@ code, .font-mono { font-family: "IBM Plex Mono", monospace; }
 @layer base {
   [data-debug-wrapper="true"] { display: contents !important; }
 }
+
+/* ---- Marketing site helpers ---- */
+.text-gradient {
+  background: linear-gradient(90deg, #ffffff 0%, #34D399 45%, #6EE7B7 55%, #ffffff 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.glass {
+  background: rgba(12, 14, 16, 0.6);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Fine forensic grid used across marketing surfaces */
+.bg-grid-fine {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/* Radial spotlight glow */
+.radial-glow {
+  background: radial-gradient(60% 60% at 50% 0%, rgba(52,211,153,0.16) 0%, rgba(52,211,153,0) 70%);
+}
+
+/* Marquee edge fade */
+.mask-fade-x {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+
+/* Conic tracing border for highlighted cards */
+.beam-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from var(--beam-angle, 0deg), transparent 0%, rgba(52,211,153,0.9) 12%, transparent 28%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: rotate360 5s linear infinite;
+}

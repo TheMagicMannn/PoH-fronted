@@ -43,7 +43,7 @@ export default function Onboarding() {
 
   const seed = useMutation({
     mutationFn: () => api.post("/demo/seed"),
-    onSuccess: (r) => { toast.success(`Loaded ${r.data.sessions} sessions`); qc.invalidateQueries(); navigate("/"); },
+    onSuccess: (r) => { toast.success(`Loaded ${r.data.sessions} sessions`); qc.invalidateQueries(); navigate("/app"); },
     onError: () => toast.error("Failed to load sample data"),
   });
 
@@ -89,11 +89,11 @@ export default function Onboarding() {
       </Step>
 
       <Step n={3} icon={PlugsConnected} title="Connect ad platforms" desc="Link GA4, Google Ads and Meta to tie fraud to campaigns and spend.">
-        <button onClick={() => navigate("/integrations")} className="flex items-center gap-1.5 rounded-md border border-white/10 bg-surface px-3 py-2 text-sm font-medium text-white hover:border-white/25">Go to integrations <ArrowRight size={14} /></button>
+        <button onClick={() => navigate("/app/integrations")} className="flex items-center gap-1.5 rounded-md border border-white/10 bg-surface px-3 py-2 text-sm font-medium text-white hover:border-white/25">Go to integrations <ArrowRight size={14} /></button>
       </Step>
 
       <Step n={4} icon={Gauge} title="Pick a sensitivity profile" desc="Conservative, balanced or aggressive — tune false positives vs protection.">
-        <button onClick={() => navigate("/settings")} className="flex items-center gap-1.5 rounded-md border border-white/10 bg-surface px-3 py-2 text-sm font-medium text-white hover:border-white/25">Open settings <ArrowRight size={14} /></button>
+        <button onClick={() => navigate("/app/settings")} className="flex items-center gap-1.5 rounded-md border border-white/10 bg-surface px-3 py-2 text-sm font-medium text-white hover:border-white/25">Open settings <ArrowRight size={14} /></button>
       </Step>
 
       <Card className="border-trusted/20 bg-trusted/[0.03] p-5">

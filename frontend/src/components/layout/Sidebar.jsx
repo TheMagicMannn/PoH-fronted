@@ -7,14 +7,14 @@ import {
 } from "@phosphor-icons/react";
 
 const NAV = [
-  { to: "/", label: "Executive Overview", icon: SquaresFour, end: true },
-  { to: "/sessions", label: "Session Intelligence", icon: Pulse },
-  { to: "/conversions", label: "Conversions", icon: Target },
-  { to: "/campaigns", label: "Campaign Quality", icon: Megaphone },
-  { to: "/rules", label: "Rules & Actions", icon: ShieldCheck },
-  { to: "/investigations", label: "Investigations", icon: MagnifyingGlass },
-  { to: "/integrations", label: "Integrations", icon: PlugsConnected },
-  { to: "/settings", label: "Workspace Settings", icon: GearSix },
+  { to: "/app", label: "Executive Overview", icon: SquaresFour, end: true },
+  { to: "/app/sessions", label: "Session Intelligence", icon: Pulse },
+  { to: "/app/conversions", label: "Conversions", icon: Target },
+  { to: "/app/campaigns", label: "Campaign Quality", icon: Megaphone },
+  { to: "/app/rules", label: "Rules & Actions", icon: ShieldCheck },
+  { to: "/app/investigations", label: "Investigations", icon: MagnifyingGlass },
+  { to: "/app/integrations", label: "Integrations", icon: PlugsConnected },
+  { to: "/app/settings", label: "Workspace Settings", icon: GearSix },
 ];
 
 export default function Sidebar() {
@@ -39,7 +39,7 @@ export default function Sidebar() {
             key={item.to}
             to={item.to}
             end={item.end}
-            data-testid={`nav-${item.to === "/" ? "overview" : item.to.slice(1)}`}
+            data-testid={`nav-${item.to === "/app" ? "overview" : item.to.split("/").pop()}`}
             className={({ isActive }) =>
               cn(
                 "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",
@@ -61,7 +61,7 @@ export default function Sidebar() {
 
       <div className="border-t border-white/8 p-3 space-y-1">
         <NavLink
-          to="/onboarding"
+          to="/app/onboarding"
           data-testid="nav-install-sdk"
           className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
         >

@@ -23,7 +23,7 @@ export default function Register() {
       company: form.company.trim(), password: form.password,
     });
     setLoading(false);
-    if (res.ok) navigate("/onboarding", { replace: true });
+    if (res.ok) navigate("/app/onboarding", { replace: true });
     else { localStorage.removeItem("poh_just_registered"); setError(res.error); }
   };
 

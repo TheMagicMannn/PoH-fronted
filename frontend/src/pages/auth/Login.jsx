@@ -90,7 +90,7 @@ export default function Login() {
     setError(""); setLoading(true);
     const res = await login(email.trim(), password);
     setLoading(false);
-    if (res.ok) navigate("/");
+    if (res.ok) navigate("/app");
     else setError(res.error);
   };
 

@@ -8,7 +8,7 @@ export default function AppLayout() {
   useEffect(() => {
     if (localStorage.getItem("poh_just_registered")) {
       localStorage.removeItem("poh_just_registered");
-      navigate("/onboarding", { replace: true });
+      navigate("/app/onboarding", { replace: true });
     }
   }, [navigate]);
 
