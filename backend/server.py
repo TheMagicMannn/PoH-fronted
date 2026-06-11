@@ -9,6 +9,7 @@ from auth import auth_router, seed_admin
 from sdk_routes import sdk_router
 from dashboard_routes import api as dashboard_router
 from seed import ensure_demo_seeded
+import ipqs
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -40,6 +41,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def on_startup():
+    await ipqs.ensure_indexes()
     ws_id = await seed_admin()
     if ws_id:
         await ensure_demo_seeded(ws_id)

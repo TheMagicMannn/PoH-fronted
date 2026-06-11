@@ -10,6 +10,7 @@ from db import db
 from models import CollectRequest, ConvertRequest
 from scoring import score_session, decide
 from sdk_script import POH_SDK_JS
+import ipqs
 
 sdk_router = APIRouter(prefix="/api", tags=["sdk"])
 
@@ -20,6 +21,34 @@ def now_utc():
 
 def now_iso():
     return now_utc().isoformat()
+
+
+def client_ip(request: Request) -> str:
+    """Resolve the real client IP behind the ingress/CDN proxy chain."""
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        first = xff.split(",")[0].strip()
+        if first:
+            return first
+    real = request.headers.get("x-real-ip", "")
+    if real:
+        return real.strip()
+    return request.client.host if request.client else "0.0.0.0"
+
+
+async def enrich_with_ip_intel(ip: str, sig: dict) -> dict | None:
+    """Look up IP threat-intel (IPQS) and fold network signals into `sig`.
+
+    Returns the raw intel dict (for forensic display) or None when disabled/private.
+    Client-supplied signals are only overridden when intel reports a positive.
+    """
+    intel = await ipqs.get_or_fetch(ip, sig.get("user_agent"), sig.get("language"))
+    if not intel:
+        return None
+    for key in ("proxy", "vpn", "tor", "datacenter_ip"):
+        if intel.get(key):
+            sig[key] = True
+    return intel
 
 
 def parse_ua(ua: str) -> dict:
@@ -87,13 +116,19 @@ async def serve_sdk():
 async def collect(body: CollectRequest, request: Request):
     site = await _resolve_site(body.sdk_key)
     ws_id = site["workspace_id"]
-    ip = request.client.host if request.client else "0.0.0.0"
+    ip = client_ip(request)
     sig = dict(body.signals or {})
     sig.setdefault("user_agent", request.headers.get("user-agent", ""))
+
+    ip_intel = await enrich_with_ip_intel(ip, sig)
 
     ua_info = parse_ua(sig.get("user_agent", ""))
     tz = sig.get("timezone", "")
     country, city = TZ_COUNTRY.get(tz, ("Unknown", "Unknown"))
+    # IPQS geo is authoritative over timezone heuristics when available.
+    if ip_intel:
+        country = ip_intel.get("country") or country
+        city = ip_intel.get("city") or city
 
     fp = body.fingerprint or sig.get("canvas") or ""
     recurrence = await _recurrence(ws_id, fp)
@@ -128,6 +163,7 @@ async def collect(body: CollectRequest, request: Request):
         "referrer": body.referrer or "",
         "fingerprint_hash": fp,
         "signals": sig,
+        "ip_intel": ip_intel,
         "recurrence": recurrence,
         "trust_score": score["trust_score"],
         "fraud_score": score["fraud_score"],
@@ -162,6 +198,7 @@ async def convert(body: ConvertRequest, request: Request):
     ws_id = site["workspace_id"]
     sig = dict(body.signals or {})
     sig.setdefault("user_agent", request.headers.get("user-agent", ""))
+    await enrich_with_ip_intel(client_ip(request), sig)
     fp = body.fingerprint or sig.get("canvas") or ""
     recurrence = await _recurrence(ws_id, fp)
     score = score_session(sig, recurrence)
