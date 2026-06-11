@@ -1,10 +1,10 @@
 {
-  "buildCommand": "yarn build",
-  "devCommand": "yarn start",
-  "installCommand": "yarn install",
+  "installCommand": "yarn --cwd frontend install",
+  "buildCommand": "yarn --cwd frontend build",
+  "devCommand": "yarn --cwd frontend start",
   "framework": "react",
-  "outputDirectory": "./frontend/build",
-  "env": [],
+  "outputDirectory": "frontend/build",
+  "env": {},
   "envPrefix": "REACT_APP_",
   "regions": ["iad1"],
   "functions": {
