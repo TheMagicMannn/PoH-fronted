@@ -29,7 +29,7 @@ export default function Sidebar() {
           <img
             src={pohMark}
             alt="PoH Intelligence — Proof of Human"
-            className="h-11 w-auto select-none"
+            className="h-9 w-auto select-none"
             draggable="false"
           />
         </NavLink>

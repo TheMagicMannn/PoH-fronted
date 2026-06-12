@@ -57,7 +57,7 @@ function Logo({ onClick }) {
       <img
         src={pohMark}
         alt="PoH Intelligence — Proof of Human"
-        className="h-12 md:h-14 w-auto select-none transition-all duration-300 group-hover:drop-shadow-[0_0_22px_rgba(52,211,153,0.55)]"
+        className="h-10 md:h-11 w-auto select-none transition-all duration-300 group-hover:drop-shadow-[0_0_22px_rgba(52,211,153,0.55)]"
         draggable="false"
       />
     </Link>
