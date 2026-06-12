@@ -340,7 +340,7 @@ export default function MarketingNav() {
         )}
         data-testid="marketing-nav"
       >
-        <nav className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6 md:px-10">
+        <nav className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-6 md:px-10">
           <Logo />
 
           <div className="hidden items-center gap-1 lg:flex">
@@ -443,7 +443,7 @@ export default function MarketingNav() {
             className="fixed inset-0 z-[60] flex flex-col bg-ink/98 backdrop-blur-xl lg:hidden"
             data-testid="mobile-menu"
           >
-            <div className="flex h-16 items-center justify-between px-6">
+            <div className="flex h-20 items-center justify-between px-6">
               <Logo onClick={() => setOpen(false)} />
               <button
                 onClick={() => setOpen(false)}
