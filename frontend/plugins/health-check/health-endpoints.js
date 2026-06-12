@@ -1,12 +1,12 @@
-// health-endpoints.js
-// API endpoints for health checks and monitoring
+// File: health-endpoints.js
+// KNW NOTE-API endpoints for health checks and monitoring
 
 const os = require('os');
 
 const SERVER_START_TIME = Date.now();
 
 /**
- * Setup health check endpoints on the dev server
+ * KNW NOTE-Setup health check endpoints on the dev server
  * @param {Object} devServer - Webpack dev server instance
  * @param {Object} healthPlugin - Instance of WebpackHealthPlugin
  */
@@ -24,7 +24,7 @@ function setupHealthEndpoints(devServer, healthPlugin) {
   console.log('[Health Check] Setting up health endpoints...');
 
   // ====================================================================
-  // GET /health - Detailed health status (JSON)
+  // KNW Note-GET /health - Detailed health status (JSON)-STATUS WORKS
   // ====================================================================
   devServer.app.get("/health", (req, res) => {
     const webpackStatus = healthPlugin.getStatus();
@@ -80,7 +80,7 @@ function setupHealthEndpoints(devServer, healthPlugin) {
   });
 
   // ====================================================================
-  // GET /health/simple - Simple text response (OK/COMPILING/ERROR)
+  // KNW Note-GET /health/simple - Simple text response (OK/COMPILING/ERROR)-Valid Response
   // ====================================================================
   devServer.app.get("/health/simple", (req, res) => {
     const webpackStatus = healthPlugin.getSimpleStatus();
@@ -97,7 +97,7 @@ function setupHealthEndpoints(devServer, healthPlugin) {
   });
 
   // ====================================================================
-  // GET /health/ready - Readiness check (Kubernetes/load balancer)
+  // KNW Note-GET /health/ready - Readiness check (Kubernetes/load balancer-TESTED
   // ====================================================================
   devServer.app.get("/health/ready", (req, res) => {
     const webpackStatus = healthPlugin.getSimpleStatus();
@@ -144,7 +144,7 @@ function setupHealthEndpoints(devServer, healthPlugin) {
   });
 
   // ====================================================================
-  // GET /health/stats - Compilation statistics
+  // KNW NOTE-GET /health/stats - Compilation statistics-POSTS PROPERLY
   // ====================================================================
   devServer.app.get("/health/stats", (req, res) => {
     const webpackStatus = healthPlugin.getStatus();
@@ -175,11 +175,11 @@ function setupHealthEndpoints(devServer, healthPlugin) {
 }
 
 // ====================================================================
-// Helper Functions
+// Here Are The Helper Functions
 // ====================================================================
 
 /**
- * Format bytes to human-readable string
+ * ALWAYS-Format bytes to human-readable string
  * @param {number} bytes
  * @returns {string}
  */
@@ -192,7 +192,7 @@ function formatBytes(bytes) {
 }
 
 /**
- * Format duration to human-readable string
+ * ALWAYS-Format duration to human-readable string
  * @param {number} ms - Duration in milliseconds
  * @returns {string}
  */
