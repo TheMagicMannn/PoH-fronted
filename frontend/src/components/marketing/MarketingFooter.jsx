@@ -80,7 +80,7 @@ export default function MarketingFooter() {
               <img
                 src={pohLogo}
                 alt="PoH Intelligence — Proof of Human"
-                className="h-14 w-auto select-none"
+                className="h-24 w-auto select-none"
                 draggable="false"
               />
             </Link>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import pohLogo from "@/assets/poh-logo.png";
 
 export default function Preloader({ onComplete }) {
   const [progress, setProgress] = useState(0);
@@ -31,25 +32,15 @@ export default function Preloader({ onComplete }) {
       <div className="absolute left-1/2 top-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-trusted/10 blur-[100px]" />
 
       <div className="relative flex flex-col items-center">
-        <motion.svg
-          width="72" height="72" viewBox="0 0 24 24" fill="none"
-          className="text-trusted drop-shadow-[0_0_16px_rgba(52,211,153,0.5)]"
-        >
-          <motion.path
-            d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z"
-            stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" fill="none"
-            initial={{ pathLength: 0, opacity: 0.2 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ duration: 1.3, ease: "easeInOut" }}
-          />
-          <motion.path
-            d="m9 12 2 2 4-4"
-            stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 0.5, delay: 0.9, ease: "easeInOut" }}
-          />
-        </motion.svg>
+        <motion.img
+          src={pohLogo}
+          alt="PoH Intelligence — Proof of Human"
+          draggable="false"
+          className="h-40 w-auto select-none drop-shadow-[0_0_28px_rgba(52,211,153,0.55)]"
+          initial={{ opacity: 0, scale: 0.94 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        />
 
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}

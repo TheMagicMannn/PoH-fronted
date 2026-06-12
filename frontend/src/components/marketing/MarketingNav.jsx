@@ -9,7 +9,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { Btn } from "./primitives";
 import { cn } from "@/lib/utils";
-import pohLogo from "@/assets/poh-logo.png";
+import pohMark from "@/assets/poh-mark.png";
 
 const PRODUCT_GROUPS = [
   {
@@ -55,9 +55,9 @@ function Logo({ onClick }) {
   return (
     <Link to="/" onClick={onClick} className="group flex items-center" data-testid="nav-logo" aria-label="PoH Intelligence — Proof of Human">
       <img
-        src={pohLogo}
+        src={pohMark}
         alt="PoH Intelligence — Proof of Human"
-        className="h-11 w-auto select-none transition-all duration-300 group-hover:drop-shadow-[0_0_18px_rgba(45,212,191,0.55)]"
+        className="h-12 md:h-14 w-auto select-none transition-all duration-300 group-hover:drop-shadow-[0_0_22px_rgba(52,211,153,0.55)]"
         draggable="false"
       />
     </Link>
