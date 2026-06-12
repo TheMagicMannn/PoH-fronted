@@ -30,7 +30,7 @@ export default function Topbar() {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-white/8 bg-[#08090A]/80 px-5 backdrop-blur-xl">
       <div className="flex items-center gap-3 min-w-0">
-        <img src={pohMark} alt="PoH Intelligence" className="md:hidden h-8 w-auto select-none" draggable="false" />
+        <img src={pohMark} alt="PoH Intelligence" className="md:hidden h-9 w-auto select-none" draggable="false" />
         <div className="hidden sm:flex items-center gap-2 rounded-md border border-white/10 bg-surface px-3 py-1.5">
           <span className="h-2 w-2 rounded-full bg-trusted animate-pulse-dot" />
           <span className="text-sm font-medium text-white truncate max-w-[200px]">{workspace?.name || "Workspace"}</span>
