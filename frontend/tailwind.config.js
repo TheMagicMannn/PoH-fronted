@@ -27,12 +27,12 @@ module.exports = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
-        // PoH forensic palette
+        // PoH forensic palette (may need to update later)
         ink: '#08090A',
         surface: '#121417',
         surfacehover: '#1A1D21',
         hairline: 'rgba(255,255,255,0.08)',
-        // Status semantics (hex so opacity modifiers work)
+        // Status semantics (hex so opacity modifiers work-Check this first)
         trusted: '#34D399',
         suspicious: '#FBBF24',
         fraudulent: '#F87171',
