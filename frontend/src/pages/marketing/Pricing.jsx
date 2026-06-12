@@ -534,7 +534,7 @@ function TierCard({ tier, annual }) {
  * --------------------------------------------------------------- */
 
 export default function Pricing() {
-  const [annual, setAnnual] = useState(true);
+  const [annual, setAnnual] = useState(false);
 
   return (
     <div data-testid="page-pricing">
