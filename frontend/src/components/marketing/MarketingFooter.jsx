@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { ShieldCheck, Github, Linkedin, Twitter } from "lucide-react";
 import { Container, Btn, Reveal } from "./primitives";
+import pohLogo from "@/assets/poh-logo.png";
 
 const COLS = [
   {
@@ -75,11 +76,13 @@ export default function MarketingFooter() {
       <Container className="py-16">
         <div className="grid grid-cols-2 gap-10 md:grid-cols-6">
           <div className="col-span-2">
-            <Link to="/" className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-trusted/30 bg-trusted/15">
-                <ShieldCheck size={18} strokeWidth={1.8} className="text-trusted" />
-              </span>
-              <span className="font-heading text-lg font-extrabold tracking-tight text-white">PoH</span>
+            <Link to="/" className="inline-flex items-center" aria-label="PoH Intelligence">
+              <img
+                src={pohLogo}
+                alt="PoH Intelligence — Proof of Human"
+                className="h-14 w-auto select-none"
+                draggable="false"
+              />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-500">
               The trust &amp; fraud intelligence layer for paid traffic, leads and conversions.

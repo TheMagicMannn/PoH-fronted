@@ -5,6 +5,7 @@ import {
   SquaresFour, Pulse, Target, Megaphone, ShieldCheck, MagnifyingGlass,
   PlugsConnected, GearSix, ShieldChevron, SignOut, Code,
 } from "@phosphor-icons/react";
+import pohLogo from "@/assets/poh-logo.png";
 
 const NAV = [
   { to: "/app", label: "Executive Overview", icon: SquaresFour, end: true },
@@ -23,14 +24,15 @@ export default function Sidebar() {
 
   return (
     <aside className="hidden md:flex w-[248px] shrink-0 flex-col border-r border-white/8 bg-[#0A0B0D]">
-      <div className="flex items-center gap-2.5 px-5 h-16 border-b border-white/8">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-trusted/15 border border-trusted/30">
-          <ShieldChevron size={18} weight="fill" className="text-trusted" />
-        </div>
-        <div className="leading-none">
-          <div className="font-heading text-base font-extrabold tracking-tight text-white">PoH</div>
-          <div className="data-label mt-0.5 text-[9px]">Trust Intelligence</div>
-        </div>
+      <div className="flex items-center px-5 h-16 border-b border-white/8">
+        <NavLink to="/app" end className="inline-flex items-center" aria-label="PoH Intelligence">
+          <img
+            src={pohLogo}
+            alt="PoH Intelligence — Proof of Human"
+            className="h-10 w-auto select-none"
+            draggable="false"
+          />
+        </NavLink>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">

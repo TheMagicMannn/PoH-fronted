@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { Btn } from "./primitives";
 import { cn } from "@/lib/utils";
+import pohLogo from "@/assets/poh-logo.png";
 
 const PRODUCT_GROUPS = [
   {
@@ -52,14 +53,13 @@ const SIMPLE_LINKS = [
 
 function Logo({ onClick }) {
   return (
-    <Link to="/" onClick={onClick} className="group flex items-center gap-2.5" data-testid="nav-logo">
-      <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-trusted/30 bg-trusted/15 transition-all group-hover:shadow-[0_0_18px_rgba(52,211,153,0.4)]">
-        <ShieldCheck size={18} strokeWidth={1.8} className="text-trusted" />
-      </span>
-      <span className="leading-none">
-        <span className="block font-heading text-lg font-extrabold tracking-tight text-white">PoH</span>
-        <span className="block font-mono text-[8px] uppercase tracking-[0.22em] text-slate-500">Trust Intelligence</span>
-      </span>
+    <Link to="/" onClick={onClick} className="group flex items-center" data-testid="nav-logo" aria-label="PoH Intelligence — Proof of Human">
+      <img
+        src={pohLogo}
+        alt="PoH Intelligence — Proof of Human"
+        className="h-11 w-auto select-none transition-all duration-300 group-hover:drop-shadow-[0_0_18px_rgba(45,212,191,0.55)]"
+        draggable="false"
+      />
     </Link>
   );
 }
