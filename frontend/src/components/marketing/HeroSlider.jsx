@@ -237,6 +237,7 @@ export default function HeroSlider() {
                     {slide.secondary.label}
                   </Btn>
                 </div>
+                {/*Need to change these*/}
                 <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-wider text-slate-500">
                   <span className="flex items-center gap-1.5"><Zap size={13} className="text-trusted" /> 23ms scoring</span>
                   <span className="flex items-center gap-1.5"><Lock size={13} className="text-trusted" /> GDPR-ready, no PII</span>
