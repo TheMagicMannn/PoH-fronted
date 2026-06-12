@@ -14,6 +14,8 @@ import ProductDetail from "@/pages/marketing/products/ProductDetail";
 import Pricing from "@/pages/marketing/Pricing";
 import Resources from "@/pages/marketing/Resources";
 import Support from "@/pages/marketing/Support";
+import Privacy from "@/pages/marketing/Privacy";
+import Terms from "@/pages/marketing/Terms";
 
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
@@ -66,6 +68,8 @@ function App() {
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/resources" element={<Resources />} />
               <Route path="/support" element={<Support />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
             </Route>
 
             {/* Auth */}

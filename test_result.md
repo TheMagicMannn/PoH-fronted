@@ -221,6 +221,8 @@ agent_communication:
       message: "Built rotating hero slider, animated Products dropdown, Proof of Human Platform page, Premium Modules hub, 10 product detail pages. Old Products.jsx archived. All routes updated. Compiles cleanly."
     - agent: "testing"
       message: "All 7 test areas passed. No console errors. No fixes needed."
+    - agent: "main"
+      message: "Iteration 2 — Restored LiveScoringPanel on Home (hero is now 2-column: rotating slider text on left + LiveScoringPanel on right). Converted Products dropdown to accordion (only 2 main tabs visible by default; clicking each chevron expands its 5 submenus). Removed the 'How it works' STEPS section from Home. Added Privacy and Terms long-form legal pages at /privacy and /terms with all client-supplied content; footer now points to these routes. Compiles cleanly."
 
 user_problem_statement: "Test the PoH marketing site updates. Don't test the dashboard or auth — only the marketing site."
 

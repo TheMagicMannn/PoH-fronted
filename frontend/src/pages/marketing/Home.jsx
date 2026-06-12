@@ -1,6 +1,6 @@
 import {
-  Activity, ShieldCheck, Crosshair, Gauge, Network, Fingerprint, Bot,
-  TrendingDown, UserX, ScanLine, Workflow, Search, ArrowRight, Zap, Lock, Code2,
+  Activity, ShieldCheck, Crosshair, Network, Fingerprint, Bot,
+  TrendingDown, UserX, ScanLine, Search, ArrowRight, Zap, Lock, Code2,
 } from "lucide-react";
 import {
   Container, Reveal, Stagger, Item, Counter, Eyebrow, SectionHeading, AmbientBackdrop, Btn, StatusBadge,
@@ -13,12 +13,6 @@ const PROBLEMS = [
   { icon: TrendingDown, tone: "fraud", k: "Up to 40%", t: "Wasted ad spend", d: "Click farms, bots and invalid traffic silently drain paid budgets while dashboards report healthy numbers." },
   { icon: Bot, tone: "suspicious", k: "1 in 5", t: "Sessions are non-human", d: "Headless browsers and automation frameworks mimic real users — until you inspect the behavioral signals." },
   { icon: UserX, tone: "review", k: "30%+", t: "Fake & junk leads", d: "Form-fill bots and incentivized traffic pollute your CRM and waste your sales team's time." },
-];
-
-const STEPS = [
-  { icon: Code2, n: "01", t: "Collect", d: "Drop one lightweight script. poh.js captures device, network and behavioral signals — privacy-safe, no PII." },
-  { icon: Gauge, n: "02", t: "Score", d: "Our layered-evidence engine scores every session & conversion in ~23ms with explainable reason codes." },
-  { icon: Workflow, n: "03", t: "Act", d: "Observe, flag, route to review or block — automatically, with rules tuned to your risk appetite." },
 ];
 
 const CAPS = [
@@ -95,31 +89,8 @@ export default function Home() {
         </Container>
       </section>
 
-      {/* HOW IT WORKS */}
-      <section className="relative overflow-hidden border-y border-white/8 bg-[#0A0B0D] py-24 md:py-32">
-        <div className="pointer-events-none absolute inset-0 bg-grid-fine opacity-30" />
-        <Container className="relative">
-          <SectionHeading eyebrow="How it works" title="From raw signal to decisive action" />
-          <Stagger className="mt-16 grid gap-8 md:grid-cols-3">
-            {STEPS.map((s, i) => (
-              <Item key={s.t}>
-                <div className="relative">
-                  {i < 2 && <div className="absolute right-0 top-7 hidden h-px w-1/2 translate-x-1/2 bg-gradient-to-r from-trusted/40 to-transparent md:block" />}
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-trusted/30 bg-trusted/10">
-                    <s.icon size={24} strokeWidth={1.6} className="text-trusted" />
-                  </div>
-                  <div className="mt-5 font-mono text-xs text-trusted">{s.n}</div>
-                  <h3 className="mt-1 font-heading text-xl font-bold text-white">{s.t}</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-400">{s.d}</p>
-                </div>
-              </Item>
-            ))}
-          </Stagger>
-        </Container>
-      </section>
-
       {/* CAPABILITIES */}
-      <section className="py-24 md:py-32">
+      <section className="py-24 md:py-32 border-t border-white/8">
         <Container>
           <SectionHeading
             eyebrow="The platform"

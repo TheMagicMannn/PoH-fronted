@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ShieldCheck, Zap, Lock, Activity, Crosshair, ScanLine, Search } from "lucide-react";
-import { Container, Eyebrow, Btn, AmbientBackdrop } from "./primitives";
+import { Container, Eyebrow, Btn, AmbientBackdrop, Reveal } from "./primitives";
+import LiveScoringPanel from "./LiveScoringPanel";
 
 const SLIDES = [
   {
@@ -74,7 +75,7 @@ const SLIDES = [
     title: (
       <>
         From signal to action{" "}
-        <span className="text-gradient animate-gradient-x">\u2014 your call.</span>
+        <span className="text-gradient animate-gradient-x">— your call.</span>
       </>
     ),
     pitch:
@@ -134,75 +135,82 @@ export default function HeroSlider() {
     <section
       className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-28"
       data-testid="hero-slider"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
     >
       <AmbientBackdrop />
       <Container className="relative">
-        <div className="relative min-h-[460px] md:min-h-[420px]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={slide.id}
-              initial={{ opacity: 0, y: 24, filter: "blur(6px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -16, filter: "blur(6px)" }}
-              transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
-              className="mx-auto max-w-4xl text-center"
-              data-testid={`hero-slide-${slide.id}`}
-            >
-              <div className="flex justify-center">
+        <div
+          className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr]"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+        >
+          {/* LEFT: rotating pitch */}
+          <div className="relative min-h-[400px] md:min-h-[440px]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={slide.id}
+                initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -14, filter: "blur(6px)" }}
+                transition={{ duration: 1.3, ease: [0.22, 1, 0.36, 1] }}
+                data-testid={`hero-slide-${slide.id}`}
+              >
                 <Eyebrow>
                   <span className={`flex h-4 w-4 items-center justify-center rounded-full border ${ACCENT_CLS[slide.accent]}`}>
                     <Icon size={10} strokeWidth={2} />
                   </span>
                   {slide.eyebrow}
                 </Eyebrow>
-              </div>
-              <h1 className="mt-6 font-heading text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
-                {slide.title}
-              </h1>
-              <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-slate-400 md:text-lg">
-                {slide.pitch}
-              </p>
-              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Btn to={slide.primary.to} variant="primary" size="lg" data-testid={`hero-slide-${slide.id}-primary`}>
-                  {slide.primary.label} <ArrowRight size={17} strokeWidth={2} />
-                </Btn>
-                <Btn to={slide.secondary.to} variant="outline" size="lg" data-testid={`hero-slide-${slide.id}-secondary`}>
-                  {slide.secondary.label}
-                </Btn>
-              </div>
-              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-wider text-slate-500">
-                <span className="flex items-center gap-1.5"><Zap size={13} className="text-trusted" /> 23ms scoring</span>
-                <span className="flex items-center gap-1.5"><Lock size={13} className="text-trusted" /> GDPR-ready, no PII</span>
-                <span className="flex items-center gap-1.5"><ShieldCheck size={13} className="text-trusted" /> No credit card</span>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
+                <h1 className="mt-6 font-heading text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
+                  {slide.title}
+                </h1>
+                <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-400 md:text-lg">
+                  {slide.pitch}
+                </p>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <Btn to={slide.primary.to} variant="primary" size="lg" data-testid={`hero-slide-${slide.id}-primary`}>
+                    {slide.primary.label} <ArrowRight size={17} strokeWidth={2} />
+                  </Btn>
+                  <Btn to={slide.secondary.to} variant="outline" size="lg" data-testid={`hero-slide-${slide.id}-secondary`}>
+                    {slide.secondary.label}
+                  </Btn>
+                </div>
+                <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-wider text-slate-500">
+                  <span className="flex items-center gap-1.5"><Zap size={13} className="text-trusted" /> 23ms scoring</span>
+                  <span className="flex items-center gap-1.5"><Lock size={13} className="text-trusted" /> GDPR-ready, no PII</span>
+                  <span className="flex items-center gap-1.5"><ShieldCheck size={13} className="text-trusted" /> No credit card</span>
+                </div>
+              </motion.div>
+            </AnimatePresence>
 
-        {/* Pagination dots */}
-        <div className="mt-10 flex items-center justify-center gap-2.5" data-testid="hero-slider-dots">
-          {SLIDES.map((s, i) => (
-            <button
-              key={s.id}
-              onClick={() => go(i)}
-              aria-label={`Go to slide ${i + 1}: ${s.eyebrow}`}
-              data-testid={`hero-slider-dot-${i}`}
-              className="group relative h-2 overflow-hidden rounded-full border border-white/10 bg-white/[0.04] transition-all"
-              style={{ width: i === index ? 56 : 22 }}
-            >
-              {i === index && (
-                <motion.span
-                  key={`fill-${index}-${paused ? "p" : "r"}`}
-                  initial={{ width: "0%" }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: SLIDE_MS / 1000, ease: "linear" }}
-                  className="absolute inset-y-0 left-0 bg-trusted"
-                />
-              )}
-            </button>
-          ))}
+            {/* Pagination dots */}
+            <div className="mt-10 flex items-center gap-2.5" data-testid="hero-slider-dots">
+              {SLIDES.map((s, i) => (
+                <button
+                  key={s.id}
+                  onClick={() => go(i)}
+                  aria-label={`Go to slide ${i + 1}: ${s.eyebrow}`}
+                  data-testid={`hero-slider-dot-${i}`}
+                  className="group relative h-2 overflow-hidden rounded-full border border-white/10 bg-white/[0.04] transition-all"
+                  style={{ width: i === index ? 56 : 22 }}
+                >
+                  {i === index && (
+                    <motion.span
+                      key={`fill-${index}-${paused ? "p" : "r"}`}
+                      initial={{ width: "0%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: SLIDE_MS / 1000, ease: "linear" }}
+                      className="absolute inset-y-0 left-0 bg-trusted"
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* RIGHT: Live scoring panel (always-on) */}
+          <Reveal delay={0.2} y={48}>
+            <LiveScoringPanel />
+          </Reveal>
         </div>
       </Container>
     </section>

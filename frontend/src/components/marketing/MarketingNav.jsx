@@ -63,6 +63,8 @@ function Logo({ onClick }) {
 }
 
 function ProductsDropdown({ open, onClose }) {
+  const [expanded, setExpanded] = useState(null); // 'poh' | 'premium' | null
+
   return (
     <AnimatePresence>
       {open && (
@@ -71,63 +73,102 @@ function ProductsDropdown({ open, onClose }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute left-1/2 top-full z-40 mt-2 w-[860px] max-w-[92vw] -translate-x-1/2"
+          className="absolute left-1/2 top-full z-40 mt-2 w-[460px] max-w-[92vw] -translate-x-1/2"
           data-testid="products-dropdown"
         >
           <div className="glass overflow-hidden rounded-2xl border border-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)]">
-            <div className="grid grid-cols-1 gap-px bg-white/8 md:grid-cols-2">
-              {PRODUCT_GROUPS.map((group) => (
-                <div key={group.id} className="bg-[#0B0D0F] p-6">
-                  <Link
-                    to={group.to}
-                    onClick={onClose}
-                    className="group block rounded-xl border border-white/10 bg-surface px-4 py-3.5 transition-all hover:border-trusted/40 hover:bg-trusted/[0.04]"
-                    data-testid={`products-dropdown-header-${group.id}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
+            <div className="flex flex-col bg-[#0B0D0F] p-3">
+              {PRODUCT_GROUPS.map((group) => {
+                const isOpen = expanded === group.id;
+                return (
+                  <div key={group.id} className="rounded-xl">
+                    <div
+                      className={cn(
+                        "group flex items-stretch gap-1 rounded-xl border transition-all",
+                        isOpen
+                          ? "border-trusted/40 bg-trusted/[0.04]"
+                          : "border-white/10 bg-surface hover:border-trusted/30 hover:bg-trusted/[0.03]"
+                      )}
+                    >
+                      <Link
+                        to={group.to}
+                        onClick={onClose}
+                        className="flex-1 px-4 py-3.5"
+                        data-testid={`products-dropdown-header-${group.id}`}
+                      >
                         <div className="font-heading text-base font-bold text-white">{group.title}</div>
                         <div className="mt-0.5 text-[12px] text-slate-400">{group.blurb}</div>
-                      </div>
-                      <ArrowRight size={16} className="shrink-0 text-slate-500 transition-all group-hover:translate-x-0.5 group-hover:text-trusted" />
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(isOpen ? null : group.id)}
+                        aria-expanded={isOpen}
+                        aria-label={`${isOpen ? "Collapse" : "Expand"} ${group.title}`}
+                        className={cn(
+                          "flex w-12 items-center justify-center border-l border-white/10 transition-colors",
+                          isOpen ? "text-trusted" : "text-slate-400 hover:text-white"
+                        )}
+                        data-testid={`products-dropdown-toggle-${group.id}`}
+                      >
+                        <ChevronDown
+                          size={18}
+                          className={cn("transition-transform duration-300", isOpen && "rotate-180")}
+                        />
+                      </button>
                     </div>
-                  </Link>
 
-                  <motion.ul
-                    initial="hidden"
-                    animate="show"
-                    variants={{ show: { transition: { staggerChildren: 0.04, delayChildren: 0.08 } } }}
-                    className="mt-3 flex flex-col gap-1"
-                  >
-                    {group.items.map((it) => {
-                      const ItIcon = it.icon;
-                      return (
-                        <motion.li
-                          key={it.to}
-                          variants={{ hidden: { opacity: 0, x: -10 }, show: { opacity: 1, x: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } } }}
+                    <AnimatePresence initial={false}>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                          className="overflow-hidden"
                         >
-                          <Link
-                            to={it.to}
-                            onClick={onClose}
-                            className="group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-white/[0.04]"
-                            data-testid={`products-dropdown-item-${it.to.split("/").pop()}`}
+                          <motion.ul
+                            initial="hidden"
+                            animate="show"
+                            variants={{ show: { transition: { staggerChildren: 0.035, delayChildren: 0.05 } } }}
+                            className="flex flex-col gap-1 px-1.5 pt-2 pb-1"
                           >
-                            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] transition-colors group-hover:border-trusted/30 group-hover:bg-trusted/10">
-                              <ItIcon size={15} strokeWidth={1.8} className="text-slate-300 transition-colors group-hover:text-trusted" />
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block text-sm font-semibold text-white">{it.label}</span>
-                              <span className="block text-[12px] text-slate-500">{it.hint}</span>
-                            </span>
-                          </Link>
-                        </motion.li>
-                      );
-                    })}
-                  </motion.ul>
-                </div>
-              ))}
+                            {group.items.map((it) => {
+                              const ItIcon = it.icon;
+                              return (
+                                <motion.li
+                                  key={it.to}
+                                  variants={{ hidden: { opacity: 0, x: -10 }, show: { opacity: 1, x: 0, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } } }}
+                                >
+                                  <Link
+                                    to={it.to}
+                                    onClick={onClose}
+                                    className="group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-white/[0.04]"
+                                    data-testid={`products-dropdown-item-${it.to.split("/").pop()}`}
+                                  >
+                                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] transition-colors group-hover:border-trusted/30 group-hover:bg-trusted/10">
+                                      <ItIcon size={15} strokeWidth={1.8} className="text-slate-300 transition-colors group-hover:text-trusted" />
+                                    </span>
+                                    <span className="min-w-0">
+                                      <span className="block text-sm font-semibold text-white">{it.label}</span>
+                                      <span className="block text-[12px] text-slate-500">{it.hint}</span>
+                                    </span>
+                                  </Link>
+                                </motion.li>
+                              );
+                            })}
+                          </motion.ul>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {group.id !== PRODUCT_GROUPS[PRODUCT_GROUPS.length - 1].id && (
+                      <div className="my-1.5 h-px bg-white/5" />
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex items-center justify-between gap-3 border-t border-white/8 bg-[#0A0B0D] px-6 py-3.5">
+            <div className="flex items-center justify-between gap-3 border-t border-white/8 bg-[#0A0B0D] px-5 py-3">
               <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500">
                 Real-time trust intelligence
               </span>
@@ -144,6 +185,67 @@ function ProductsDropdown({ open, onClose }) {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function MobileProductGroup({ group, onClose }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-white/10 bg-surface">
+      <div className="flex items-stretch">
+        <Link
+          to={group.to}
+          onClick={onClose}
+          className="flex-1 px-4 py-3.5"
+          data-testid={`mobile-products-header-${group.id}`}
+        >
+          <div className="font-heading text-base font-bold text-white">{group.title}</div>
+          <div className="mt-0.5 text-[12px] text-slate-500">{group.blurb}</div>
+        </Link>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-label={`${open ? "Collapse" : "Expand"} ${group.title}`}
+          className={cn(
+            "flex w-12 items-center justify-center border-l border-white/10 transition-colors",
+            open ? "text-trusted" : "text-slate-400"
+          )}
+          data-testid={`mobile-products-toggle-${group.id}`}
+        >
+          <ChevronDown
+            size={18}
+            className={cn("transition-transform duration-300", open && "rotate-180")}
+          />
+        </button>
+      </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+          >
+            <ul className="flex flex-col gap-1 px-3 pb-3 pt-1">
+              {group.items.map((it) => (
+                <li key={it.to}>
+                  <Link
+                    to={it.to}
+                    onClick={onClose}
+                    className="block rounded-lg px-2 py-2 text-sm text-slate-300 hover:bg-white/[0.04] hover:text-trusted"
+                    data-testid={`mobile-products-item-${it.to.split("/").pop()}`}
+                  >
+                    {it.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -336,34 +438,13 @@ export default function MarketingNav() {
                       transition={{ duration: 0.3 }}
                       className="overflow-hidden"
                     >
-                      <div className="space-y-5 py-4">
+                      <div className="space-y-3 py-4">
                         {PRODUCT_GROUPS.map((group) => (
-                          <div key={group.id} className="rounded-xl border border-white/10 bg-surface p-4">
-                            <Link
-                              to={group.to}
-                              onClick={() => setOpen(false)}
-                              className="block font-heading text-base font-bold text-white"
-                              data-testid={`mobile-products-header-${group.id}`}
-                            >
-                              {group.title}
-                              <span className="ml-1.5 text-trusted">›</span>
-                            </Link>
-                            <p className="mt-0.5 text-[12px] text-slate-500">{group.blurb}</p>
-                            <ul className="mt-3 flex flex-col gap-1">
-                              {group.items.map((it) => (
-                                <li key={it.to}>
-                                  <Link
-                                    to={it.to}
-                                    onClick={() => setOpen(false)}
-                                    className="block rounded-lg px-2 py-2 text-sm text-slate-300 hover:bg-white/[0.04] hover:text-trusted"
-                                    data-testid={`mobile-products-item-${it.to.split("/").pop()}`}
-                                  >
-                                    {it.label}
-                                  </Link>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
+                          <MobileProductGroup
+                            key={group.id}
+                            group={group}
+                            onClose={() => setOpen(false)}
+                          />
                         ))}
                       </div>
                     </motion.div>
