@@ -6,7 +6,7 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://signal-detect-19.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://trust-platform-21.preview.emergentagent.com").rstrip("/")
 DEMO_EMAIL = "analyst@poh.io"
 DEMO_PASSWORD = "PohDemo2026!"
 
