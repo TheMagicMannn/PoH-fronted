@@ -8,7 +8,9 @@ import AppLayout from "@/components/layout/AppLayout";
 import MarketingLayout from "@/components/marketing/MarketingLayout";
 import Home from "@/pages/marketing/Home";
 import About from "@/pages/marketing/About";
-import Products from "@/pages/marketing/Products";
+import ProofOfHumanPlatform from "@/pages/marketing/ProofOfHumanPlatform";
+import PremiumModules from "@/pages/marketing/PremiumModules";
+import ProductDetail from "@/pages/marketing/products/ProductDetail";
 import Pricing from "@/pages/marketing/Pricing";
 import Resources from "@/pages/marketing/Resources";
 import Support from "@/pages/marketing/Support";
@@ -57,7 +59,10 @@ function App() {
             <Route element={<MarketingLayout />}>
               <Route path="/" element={<Home />} />
               <Route path="/about" element={<About />} />
-              <Route path="/products" element={<Products />} />
+              <Route path="/products" element={<Navigate to="/products/proof-of-human-platform" replace />} />
+              <Route path="/products/proof-of-human-platform" element={<ProofOfHumanPlatform />} />
+              <Route path="/products/premium-modules" element={<PremiumModules />} />
+              <Route path="/products/:slug" element={<ProductDetail />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/resources" element={<Resources />} />
               <Route path="/support" element={<Support />} />

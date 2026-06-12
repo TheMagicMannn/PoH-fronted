@@ -5,7 +5,7 @@ import {
 import {
   Container, Reveal, Stagger, Item, Counter, Eyebrow, SectionHeading, AmbientBackdrop, Btn, StatusBadge,
 } from "@/components/marketing/primitives";
-import LiveScoringPanel from "@/components/marketing/LiveScoringPanel";
+import HeroSlider from "@/components/marketing/HeroSlider";
 
 const LOGOS = ["NORTHWIND", "VOLTREACH", "PIXELERA", "HELIXIO", "QUANTLEAP", "BRIGHTFUNNEL", "ADVERA", "MERIDIAN"];
 
@@ -48,50 +48,8 @@ const QUOTES = [
 export default function Home() {
   return (
     <div data-testid="page-home">
-      {/* HERO */}
-      <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-28">
-        <AmbientBackdrop />
-        <Container className="relative">
-          <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr]">
-            <div>
-              <Reveal><Eyebrow>Real-time traffic forensics</Eyebrow></Reveal>
-              <Reveal delay={0.06}>
-                <h1 className="mt-6 font-heading text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
-                  The trust &amp; fraud<br className="hidden sm:block" /> intelligence layer for{" "}
-                  <span className="text-gradient animate-gradient-x">paid traffic</span>.
-                </h1>
-              </Reveal>
-              <Reveal delay={0.12}>
-                <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-400 md:text-lg">
-                  Score every session and conversion in real time. See which traffic is real, which conversions
-                  to trust, and exactly what action to take — backed by explainable reason codes and confidence.
-                </p>
-              </Reveal>
-              <Reveal delay={0.18}>
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                  <Btn to="/register" variant="primary" size="lg" data-testid="hero-cta-register">
-                    Create free workspace <ArrowRight size={17} strokeWidth={2} />
-                  </Btn>
-                  <Btn to="/products" variant="outline" size="lg" data-testid="hero-cta-products">
-                    See how it works
-                  </Btn>
-                </div>
-              </Reveal>
-              <Reveal delay={0.24}>
-                <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-wider text-slate-500">
-                  <span className="flex items-center gap-1.5"><Zap size={13} className="text-trusted" /> 23ms scoring</span>
-                  <span className="flex items-center gap-1.5"><Lock size={13} className="text-trusted" /> GDPR-ready, no PII</span>
-                  <span className="flex items-center gap-1.5"><ShieldCheck size={13} className="text-trusted" /> No credit card</span>
-                </div>
-              </Reveal>
-            </div>
-
-            <Reveal delay={0.2} y={48}>
-              <LiveScoringPanel />
-            </Reveal>
-          </div>
-        </Container>
-      </section>
+      {/* HERO SLIDER (replaces previous hero section) */}
+      <HeroSlider />
 
       {/* SOCIAL PROOF MARQUEE */}
       <section className="border-y border-white/8 bg-[#0A0B0D] py-8">
@@ -220,7 +178,7 @@ export default function Home() {
               </Reveal>
               <Reveal delay={0.16}>
                 <div className="mt-7">
-                  <Btn to="/products" variant="outline" size="md" data-testid="integrations-cta">
+                  <Btn to="/products/proof-of-human-platform" variant="outline" size="md" data-testid="integrations-cta">
                     Explore integrations <ArrowRight size={15} strokeWidth={2} />
                   </Btn>
                 </div>
