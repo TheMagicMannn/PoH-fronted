@@ -1,10 +1,27 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ShieldCheck, Zap, Lock, Activity, Crosshair, ScanLine, Search } from "lucide-react";
+import { ArrowRight, ShieldCheck, Zap, Lock, Activity, Crosshair, ScanLine, Search, Bot, AlertTriangle } from "lucide-react";
 import { Container, Eyebrow, Btn, AmbientBackdrop } from "./primitives";
 import LiveScoringPanel from "./LiveScoringPanel";
 
 const SLIDES = [
+  {
+    id: "bot-majority",
+    eyebrow: "Threat Report — June 2026",
+    title: (
+      <>
+        Bots just took over the internet.{" "}
+        <span className="text-gradient animate-gradient-x">57.5% and climbing.</span>
+      </>
+    ),
+    pitch:
+      "For the first time in history, automated traffic has overtaken humans online. As of June 2026, 57.5% of global internet traffic is non-human \u2014 scrapers, AI agents, click farms and adversarial bots. Every dollar of paid acquisition is now bidding against machines. PoH separates the 42.5% that matters.",
+    primary: { to: "/register", label: "Protect your traffic" },
+    secondary: { to: "/products/proof-of-human-platform", label: "See how PoH responds" },
+    icon: Bot,
+    accent: "fraud",
+    badge: "57.5%",
+  },
   {
     id: "main",
     eyebrow: "Proof of Human Platform",
@@ -159,6 +176,12 @@ export default function HeroSlider() {
                     <Icon size={10} strokeWidth={2} />
                   </span>
                   {slide.eyebrow}
+                  {slide.badge && (
+                    <span className={`ml-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider ${ACCENT_CLS[slide.accent]}`}>
+                      <AlertTriangle size={10} strokeWidth={2.5} />
+                      {slide.badge}
+                    </span>
+                  )}
                 </Eyebrow>
                 <h1 className="mt-6 font-heading text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
                   {slide.title}
