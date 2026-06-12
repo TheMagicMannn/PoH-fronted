@@ -1,8 +1,29 @@
 import { useEffect, useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ShieldCheck, Zap, Lock, Activity, Crosshair, ScanLine, Search, Bot, AlertTriangle } from "lucide-react";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
+import { ArrowRight, ShieldCheck, Zap, Lock, Activity, Crosshair, ScanLine, Search, Bot, AlertTriangle, ExternalLink } from "lucide-react";
 import { Container, Eyebrow, Btn, AmbientBackdrop } from "./primitives";
 import LiveScoringPanel from "./LiveScoringPanel";
+
+/**
+ * Animated percentage counter — ramps from 0 to `value` with easing.
+ * Remounts (and re-animates) whenever the parent slide enters via AnimatePresence.
+ */
+function AnimatedPercent({ value = 57.5, duration = 1.8, decimals = 1, className = "" }) {
+  const mv = useMotionValue(0);
+  const rounded = useTransform(mv, (v) => v.toFixed(decimals));
+  useEffect(() => {
+    const controls = animate(mv, value, {
+      duration,
+      ease: [0.22, 1, 0.36, 1],
+    });
+    return () => controls.stop();
+  }, [mv, value, duration]);
+  return (
+    <span className={`text-gradient animate-gradient-x tabular-nums ${className}`}>
+      <motion.span>{rounded}</motion.span>%
+    </span>
+  );
+}
 
 const SLIDES = [
   {
@@ -11,7 +32,7 @@ const SLIDES = [
     title: (
       <>
         Bots just took over the internet.{" "}
-        <span className="text-gradient animate-gradient-x">57.5% and climbing.</span>
+        <AnimatedPercent value={57.5} /> and climbing.
       </>
     ),
     pitch:
@@ -21,6 +42,10 @@ const SLIDES = [
     icon: Bot,
     accent: "fraud",
     badge: "57.5%",
+    source: {
+      label: "Thales / Imperva 2026 Bad Bot Report",
+      href: "https://www.imperva.com/resources/resource-library/reports/2026-bad-bot-report/",
+    },
   },
   {
     id: "main",
@@ -189,6 +214,21 @@ export default function HeroSlider() {
                 <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-400 md:text-lg">
                   {slide.pitch}
                 </p>
+                {slide.source && (
+                  <a
+                    href={slide.source.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-slate-500 transition-colors hover:text-trusted"
+                    data-testid={`hero-slide-${slide.id}-source`}
+                  >
+                    <span className="text-slate-600">Source:</span>
+                    <span className="underline decoration-slate-700 underline-offset-2 group-hover:decoration-trusted">
+                      {slide.source.label}
+                    </span>
+                    <ExternalLink size={11} strokeWidth={2} />
+                  </a>
+                )}
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <Btn to={slide.primary.to} variant="primary" size="lg" data-testid={`hero-slide-${slide.id}-primary`}>
                     {slide.primary.label} <ArrowRight size={17} strokeWidth={2} />
