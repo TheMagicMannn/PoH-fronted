@@ -159,7 +159,7 @@ export default function LiveScoringPanel() {
           </div>
         </div>
 
-        {/* stream */}
+        {/* stream — fixed-height rows so the panel never reflows */}
         <div className="px-2 py-2">
           <div className="grid grid-cols-12 px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider text-slate-600">
             <span className="col-span-3">session</span>
@@ -167,17 +167,16 @@ export default function LiveScoringPanel() {
             <span className="col-span-3">verdict</span>
             <span className="col-span-2 text-right">fraud</span>
           </div>
-          <div className="relative space-y-1">
+          <div className="relative overflow-hidden" style={{ height: 5 * 34 }}>
             <AnimatePresence initial={false}>
-              {rows.map((r) => (
+              {rows.map((r, i) => (
                 <motion.div
                   key={r.id}
-                  layout
-                  initial={{ opacity: 0, y: -14, height: 0 }}
-                  animate={{ opacity: 1, y: 0, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                  className="grid grid-cols-12 items-center rounded-md px-3 py-2 font-mono text-[11px] hover:bg-white/[0.03]"
+                  initial={{ opacity: 0, y: -34 }}
+                  animate={{ opacity: 1, y: i * 34 }}
+                  exit={{ opacity: 0, y: 5 * 34 + 8 }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute inset-x-0 top-0 grid h-[32px] grid-cols-12 items-center rounded-md px-3 font-mono text-[11px] hover:bg-white/[0.03]"
                 >
                   <span className="col-span-3 text-slate-300">#{r.id}</span>
                   <span className="col-span-4 truncate text-slate-400">{r.src}</span>

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ShieldCheck, Zap, Lock, Activity, Crosshair, ScanLine, Search } from "lucide-react";
-import { Container, Eyebrow, Btn, AmbientBackdrop, Reveal } from "./primitives";
+import { Container, Eyebrow, Btn, AmbientBackdrop } from "./primitives";
 import LiveScoringPanel from "./LiveScoringPanel";
 
 const SLIDES = [
@@ -139,19 +139,19 @@ export default function HeroSlider() {
       <AmbientBackdrop />
       <Container className="relative">
         <div
-          className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr]"
+          className="grid items-start gap-12 lg:grid-cols-[1.05fr_1fr]"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
           {/* LEFT: rotating pitch */}
-          <div className="relative min-h-[400px] md:min-h-[440px]">
+          <div className="relative min-h-[460px] md:min-h-[500px] lg:min-h-[520px]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={slide.id}
-                initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                exit={{ opacity: 0, y: -14, filter: "blur(6px)" }}
-                transition={{ duration: 1.3, ease: [0.22, 1, 0.36, 1] }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.9, ease: "linear" }}
                 data-testid={`hero-slide-${slide.id}`}
               >
                 <Eyebrow>
@@ -208,9 +208,7 @@ export default function HeroSlider() {
           </div>
 
           {/* RIGHT: Live scoring panel (always-on) */}
-          <Reveal delay={0.2} y={48}>
-            <LiveScoringPanel />
-          </Reveal>
+          <LiveScoringPanel />
         </div>
       </Container>
     </section>
