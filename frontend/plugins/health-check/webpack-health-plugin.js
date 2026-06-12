@@ -1,10 +1,10 @@
-// webpack-health-plugin.js
-// Webpack plugin that tracks compilation state and health metrics
+// File  webpack-health-plugin.js
+// KNW Note-this tracks compilation state and health metrics
 
 class WebpackHealthPlugin {
   constructor() {
     this.status = {
-      state: 'idle',           // idle, compiling, success, failed
+      state: 'idle',           // KNW Note-idle, compiling, success, failed I am setting to idke for status updates 
       errors: [],
       warnings: [],
       lastCompileTime: null,
@@ -65,7 +65,7 @@ class WebpackHealthPlugin {
       }
     });
 
-    // Hook: Compilation failed
+    // KNW Code for Hook: Compilation failed
     compiler.hooks.failed.tap(pluginName, (error) => {
       this.status.state = 'failed';
       this.status.errors = [{
@@ -75,7 +75,7 @@ class WebpackHealthPlugin {
       this.status.compileDuration = Date.now() - this.status.lastCompileTime;
     });
 
-    // Hook: Invalid (file changed, recompiling)
+    // KNW Code for Hook: Invalid (file changed, recompiling)
     compiler.hooks.invalid.tap(pluginName, () => {
       this.status.state = 'compiling';
     });
@@ -84,7 +84,7 @@ class WebpackHealthPlugin {
   getStatus() {
     return {
       ...this.status,
-      // Add computed fields
+      // KNW Note-Add computed fields
       isHealthy: this.status.state === 'success',
       errorCount: this.status.errors.length,
       warningCount: this.status.warnings.length,
@@ -92,7 +92,7 @@ class WebpackHealthPlugin {
     };
   }
 
-  // Get simplified status for quick checks
+  // KNW-Get simplified status
   getSimpleStatus() {
     return {
       state: this.status.state,
@@ -102,7 +102,7 @@ class WebpackHealthPlugin {
     };
   }
 
-  // Reset statistics (useful for testing)
+  // Reset statistics (KNW Note-useful for testing)
   reset() {
     this.status = {
       state: 'idle',
