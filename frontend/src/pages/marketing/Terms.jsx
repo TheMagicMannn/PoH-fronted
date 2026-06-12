@@ -206,6 +206,7 @@ export default function Terms() {
       eyebrow="Terms of Use"
       title="Terms of Use for Proof of Human (PoH) Intelligence"
       effectiveDate="June 11, 2026"
+      lastUpdated="June 11, 2026"
       intro={[
         "An Evo Technology Group, LLC Company.",
         "Welcome to Proof of Human Intelligence. These Terms of Use (\"Terms\") constitute a binding legal agreement between you (\"Customer,\" \"User,\" \"you,\" or \"your\") and Evo Technology Group, LLC, doing business as Proof of Human Intelligence (collectively, \"PoH,\" \"we,\" \"us,\" or \"our\").",

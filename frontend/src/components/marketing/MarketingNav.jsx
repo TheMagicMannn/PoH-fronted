@@ -17,6 +17,7 @@ const PRODUCT_GROUPS = [
     to: "/products/proof-of-human-platform",
     blurb: "Five intelligence engines, one platform.",
     accent: "trusted",
+    displayMode: "accordion", // collapsed by default, expand via chevron
     items: [
       { label: "Human Authenticity Intelligence", to: "/products/human-authenticity-intelligence", icon: Fingerprint, hint: "Identify real humans with confidence" },
       { label: "Trust Intelligence", to: "/products/trust-intelligence", icon: ShieldCheck, hint: "Understand who can be trusted" },
@@ -31,6 +32,7 @@ const PRODUCT_GROUPS = [
     to: "/products/premium-modules",
     blurb: "Expansion modules that extend the core platform.",
     accent: "review",
+    displayMode: "list", // always shown
     items: [
       { label: "Ad Shield", to: "/products/ad-shield", icon: Shield, hint: "Stop wasting ad budget on IVT" },
       { label: "Fraud Memory Cloud", to: "/products/fraud-memory-cloud", icon: Database, hint: "Learn from every fraud attempt" },
@@ -62,8 +64,54 @@ function Logo({ onClick }) {
   );
 }
 
+function ProductsSubmenuList({ items, onClose, variant = "stagger" }) {
+  const useStagger = variant === "stagger";
+  const Wrapper = useStagger ? motion.ul : "ul";
+  const wrapperProps = useStagger
+    ? {
+        initial: "hidden",
+        animate: "show",
+        variants: { show: { transition: { staggerChildren: 0.035, delayChildren: 0.05 } } },
+      }
+    : {};
+  return (
+    <Wrapper {...wrapperProps} className="flex flex-col gap-1 px-1.5 pt-2 pb-1">
+      {items.map((it) => {
+        const ItIcon = it.icon;
+        const Li = useStagger ? motion.li : "li";
+        const liProps = useStagger
+          ? {
+              variants: {
+                hidden: { opacity: 0, x: -10 },
+                show: { opacity: 1, x: 0, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } },
+              },
+            }
+          : {};
+        return (
+          <Li key={it.to} {...liProps}>
+            <Link
+              to={it.to}
+              onClick={onClose}
+              className="group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-white/[0.04]"
+              data-testid={`products-dropdown-item-${it.to.split("/").pop()}`}
+            >
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] transition-colors group-hover:border-trusted/30 group-hover:bg-trusted/10">
+                <ItIcon size={15} strokeWidth={1.8} className="text-slate-300 transition-colors group-hover:text-trusted" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-white">{it.label}</span>
+                <span className="block text-[12px] text-slate-500">{it.hint}</span>
+              </span>
+            </Link>
+          </Li>
+        );
+      })}
+    </Wrapper>
+  );
+}
+
 function ProductsDropdown({ open, onClose }) {
-  const [expanded, setExpanded] = useState(null); // 'poh' | 'premium' | null
+  const [expanded, setExpanded] = useState(null); // 'poh' | null
 
   return (
     <AnimatePresence>
@@ -78,8 +126,9 @@ function ProductsDropdown({ open, onClose }) {
         >
           <div className="glass overflow-hidden rounded-2xl border border-white/10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)]">
             <div className="flex flex-col bg-[#0B0D0F] p-3">
-              {PRODUCT_GROUPS.map((group) => {
-                const isOpen = expanded === group.id;
+              {PRODUCT_GROUPS.map((group, gi) => {
+                const isAccordion = group.displayMode === "accordion";
+                const isOpen = !isAccordion || expanded === group.id;
                 return (
                   <div key={group.id} className="rounded-xl">
                     <div
@@ -99,69 +148,48 @@ function ProductsDropdown({ open, onClose }) {
                         <div className="font-heading text-base font-bold text-white">{group.title}</div>
                         <div className="mt-0.5 text-[12px] text-slate-400">{group.blurb}</div>
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => setExpanded(isOpen ? null : group.id)}
-                        aria-expanded={isOpen}
-                        aria-label={`${isOpen ? "Collapse" : "Expand"} ${group.title}`}
-                        className={cn(
-                          "flex w-12 items-center justify-center border-l border-white/10 transition-colors",
-                          isOpen ? "text-trusted" : "text-slate-400 hover:text-white"
-                        )}
-                        data-testid={`products-dropdown-toggle-${group.id}`}
-                      >
-                        <ChevronDown
-                          size={18}
-                          className={cn("transition-transform duration-300", isOpen && "rotate-180")}
-                        />
-                      </button>
+                      {isAccordion && (
+                        <button
+                          type="button"
+                          onClick={() => setExpanded(expanded === group.id ? null : group.id)}
+                          aria-expanded={isOpen}
+                          aria-label={`${isOpen ? "Collapse" : "Expand"} ${group.title}`}
+                          className={cn(
+                            "flex w-12 items-center justify-center border-l border-white/10 transition-colors",
+                            isOpen ? "text-trusted" : "text-slate-400 hover:text-white"
+                          )}
+                          data-testid={`products-dropdown-toggle-${group.id}`}
+                        >
+                          <ChevronDown
+                            size={18}
+                            className={cn("transition-transform duration-300", isOpen && "rotate-180")}
+                          />
+                        </button>
+                      )}
                     </div>
 
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                          className="overflow-hidden"
-                        >
-                          <motion.ul
-                            initial="hidden"
-                            animate="show"
-                            variants={{ show: { transition: { staggerChildren: 0.035, delayChildren: 0.05 } } }}
-                            className="flex flex-col gap-1 px-1.5 pt-2 pb-1"
+                    {isAccordion ? (
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                            className="overflow-hidden"
+                            data-testid={`products-dropdown-panel-${group.id}`}
                           >
-                            {group.items.map((it) => {
-                              const ItIcon = it.icon;
-                              return (
-                                <motion.li
-                                  key={it.to}
-                                  variants={{ hidden: { opacity: 0, x: -10 }, show: { opacity: 1, x: 0, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } } }}
-                                >
-                                  <Link
-                                    to={it.to}
-                                    onClick={onClose}
-                                    className="group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-white/[0.04]"
-                                    data-testid={`products-dropdown-item-${it.to.split("/").pop()}`}
-                                  >
-                                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] transition-colors group-hover:border-trusted/30 group-hover:bg-trusted/10">
-                                      <ItIcon size={15} strokeWidth={1.8} className="text-slate-300 transition-colors group-hover:text-trusted" />
-                                    </span>
-                                    <span className="min-w-0">
-                                      <span className="block text-sm font-semibold text-white">{it.label}</span>
-                                      <span className="block text-[12px] text-slate-500">{it.hint}</span>
-                                    </span>
-                                  </Link>
-                                </motion.li>
-                              );
-                            })}
-                          </motion.ul>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                            <ProductsSubmenuList items={group.items} onClose={onClose} variant="stagger" />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    ) : (
+                      <div data-testid={`products-dropdown-panel-${group.id}`}>
+                        <ProductsSubmenuList items={group.items} onClose={onClose} variant="static" />
+                      </div>
+                    )}
 
-                    {group.id !== PRODUCT_GROUPS[PRODUCT_GROUPS.length - 1].id && (
+                    {gi !== PRODUCT_GROUPS.length - 1 && (
                       <div className="my-1.5 h-px bg-white/5" />
                     )}
                   </div>
@@ -287,6 +315,21 @@ export default function MarketingNav() {
 
   return (
     <>
+      {/* Backdrop blur when Products dropdown is open */}
+      <AnimatePresence>
+        {productsOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="pointer-events-none fixed inset-0 z-40 bg-ink/55 backdrop-blur-md"
+            data-testid="nav-backdrop"
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+
       <motion.header
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}

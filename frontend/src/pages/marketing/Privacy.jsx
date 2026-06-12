@@ -132,6 +132,7 @@ export default function Privacy() {
       eyebrow="Privacy Policy"
       title="Privacy Policy for Proof of Human (PoH) Intelligence"
       effectiveDate="June 11, 2026"
+      lastUpdated="June 11, 2026"
       intro={[
         "An Evo Technology Group, LLC Company.",
         "This Privacy Policy (\"Policy\") explains how Evo Technology Group, LLC, doing business as Proof of Human Intelligence (collectively, \"PoH,\" \"we,\" \"us,\" or \"our\"), collects, uses, and discloses information through our corporate website, client dashboards, online communications, and our real-time verification and anti-fraud products (collectively, the \"Services\").",

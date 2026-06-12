@@ -36,7 +36,7 @@ const COLS = [
     links: [
       { label: "Privacy", to: "/privacy" },
       { label: "Terms", to: "/terms" },
-      { label: "GDPR & CCPA", to: "/support" },
+      { label: "GDPR & CCPA", to: "/gdpr-ccpa" },
       { label: "Security", to: "/support" },
     ],
   },
