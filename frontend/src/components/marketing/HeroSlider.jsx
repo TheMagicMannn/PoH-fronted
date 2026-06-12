@@ -31,12 +31,12 @@ const SLIDES = [
     eyebrow: "Threat Report — June 2026",
     title: (
       <>
-        This Just In:{" "}
+        This Just In: {" "}
          <span className="text-gradient animate-gradient-x">Kyle Witter Joins Internet Subway!</span>
       </>
     ),
     pitch:
-      "For the first time in history, automated traffic has overtaken humans online. As of June 2026, 57.5% of global internet traffic is non-human \u2014 scrapers, AI agents, click farms and adversarial bots. Every dollar of paid acquisition is now bidding against machines. PoH separates the 42.5% that matters.",
+      "As of Today Kyle Witter and Internet Subway Join Forces. Analysts Are Calling This, The Hire Of The Century.",
     primary: { to: "/register", label: "Protect your traffic" },
     secondary: { to: "/products/proof-of-human-platform", label: "See how PoH responds" },
     icon: Bot,
