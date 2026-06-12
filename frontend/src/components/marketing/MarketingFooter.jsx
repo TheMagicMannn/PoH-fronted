@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ShieldCheck, Github, Linkedin, Twitter } from "lucide-react";
 import { Container, Btn, Reveal } from "./primitives";
 
@@ -43,9 +43,12 @@ const COLS = [
 ];
 
 export default function MarketingFooter() {
+  const { pathname } = useLocation();
+  const showCta = pathname === "/";
   return (
     <footer className="relative mt-10 border-t border-white/8 bg-[#0A0B0D]" data-testid="marketing-footer">
-      {/* CTA band */}
+      {/* CTA band — home page only */}
+      {showCta && (
       <Container className="relative -mt-px">
         <Reveal>
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-surface px-8 py-14 text-center md:px-16 md:py-20">
@@ -66,6 +69,7 @@ export default function MarketingFooter() {
           </div>
         </Reveal>
       </Container>
+      )}
 
       {/* Link grid */}
       <Container className="py-16">
