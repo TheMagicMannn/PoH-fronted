@@ -31,8 +31,8 @@ const SLIDES = [
     eyebrow: "Threat Report — June 2026",
     title: (
       <>
-        Bots just took over the internet.{" "}
-        <AnimatedPercent value={57.5} /> and climbing.
+        This Just In:{" "}
+         <span className="text-gradient animate-gradient-x">Kyle Witter Joins Internet Subway!</span>
       </>
     ),
     pitch:
