@@ -102,6 +102,126 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
+user_problem_statement: |
+  Add a rotating hero slider (6 slides, 10s slow fade) on the Home page replacing the existing
+  "REAL-TIME TRAFFIC FORENSICS" hero left+right block. Add an animated Products dropdown to the
+  marketing nav with two main tabs (Proof of Human Platform, Premium Modules) — each clickable
+  to its own hub page — with 5 animated submenu items per tab. Rebuild the Proof of Human
+  Platform page to the new spec (hero, "What makes PoH different" callout, 5 zig-zag engine
+  sections, How It Works 5 steps, Who Uses, Outcome 2-column, Final CTA). Build the Premium
+  Modules hub page (Ad Shield, AI Fraud Analyst, Intent Intelligence, Trust APIs, Fraud Memory
+  Cloud, Threat Intelligence Feed + Optional Future modules). Create 10 individual
+  /products/<slug> detail pages. Move the previous Products page to an `old/` folder.
+
+frontend:
+  - task: "Home hero rotating slider (6 slides, 10s fade)"
+    implemented: true
+    working: true
+    file: "frontend/src/components/marketing/HeroSlider.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "New HeroSlider component with 6 slides (MAIN + 5 module pitches), 10s auto-advance, slow blur-fade transition, hover-pause, animated pagination dots with progress fill. Replaces the previous Home hero left/right block."
+        - working: true
+          agent: "testing"
+          comment: "All 6 slides verified with correct eyebrows. Pagination dots 0-5 all functional. Fade transitions confirmed."
+
+  - task: "Marketing nav Products mega-menu dropdown"
+    implemented: true
+    working: true
+    file: "frontend/src/components/marketing/MarketingNav.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Animated glass mega-menu with two clickable header tabs (Proof of Human Platform, Premium Modules) and 5 staggered submenu items per group. Mobile menu has accordion variant. Hover-open with 180ms close delay."
+        - working: true
+          agent: "testing"
+          comment: "Hover triggers dropdown, both columns and all submenu items render, all navigation targets confirmed. Mobile accordion verified at 390x844."
+
+  - task: "Proof of Human Platform page (rebuilt to spec)"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/marketing/ProofOfHumanPlatform.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Full rebuild per spec: Hero with 'What makes PoH different' callout, 5 quick-nav engine pills, 5 zig-zag engine sections (Human Authenticity / Trust / Traffic / Revenue Protection / Analytics & Operations) each with output score cards & ✔ benefits, 5-step How It Works with 4 score chips on step 3, 6 audience cards, 2-column Outcome section with 5 numbered questions, final CTA."
+        - working: true
+          agent: "testing"
+          comment: "All sections render correctly. Engine zig-zag alternates correctly. All 5 'Open module page' links route to the right detail pages."
+
+  - task: "Premium Modules hub page"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/marketing/PremiumModules.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Hub page with hero, 6 module nav pills, 6 zig-zag module sections (Ad Shield, AI Fraud Analyst, Intent Intelligence, Trust API Pack, Fraud Memory Cloud, Threat Intelligence Feed) each with what-it-does benefits + ideal-for chips, Optional Future Enterprise Modules section (5 coming-soon cards), final CTA."
+        - working: true
+          agent: "testing"
+          comment: "Hero, 6 module pills, 6 module sections, future modules section and final CTA all verified."
+
+  - task: "10 individual /products/<slug> detail pages"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/marketing/products/ProductDetail.jsx, productData.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Shared ProductDetail component reads slug from useParams + PRODUCT_DETAILS data map. Renders hero with back-link to parent hub, optional score card, benefits, 'platform continuously evaluates' section with numbered items, 'Ideal for' pills, final CTA. Slugs: human-authenticity-intelligence, trust-intelligence, traffic-intelligence, revenue-protection, analytics-operations, ad-shield, fraud-memory-cloud, ai-fraud-analyst, intent-intelligence, trust-apis."
+        - working: true
+          agent: "testing"
+          comment: "All 10 detail pages render with the correct content blocks and back-links."
+
+  - task: "Routing + legacy products page moved to old/"
+    implemented: true
+    working: true
+    file: "frontend/src/App.js, pages/marketing/old/"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "App.js updated with new routes: /products → redirects to /products/proof-of-human-platform; /products/proof-of-human-platform; /products/premium-modules; /products/:slug (catches all 10 detail pages). Old Products.jsx moved to pages/marketing/old/_archived_products.jsx (not routed)."
+        - working: true
+          agent: "testing"
+          comment: "/products correctly redirects to PoH platform page."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.1"
+  test_sequence: 1
+  run_ui: true
+
+test_plan:
+  current_focus: []
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "main"
+      message: "Built rotating hero slider, animated Products dropdown, Proof of Human Platform page, Premium Modules hub, 10 product detail pages. Old Products.jsx archived. All routes updated. Compiles cleanly."
+    - agent: "testing"
+      message: "All 7 test areas passed. No console errors. No fixes needed."
+
 user_problem_statement: "Test the PoH marketing site updates. Don't test the dashboard or auth — only the marketing site."
 
 frontend:
