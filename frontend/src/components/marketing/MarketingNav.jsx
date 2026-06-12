@@ -315,7 +315,7 @@ export default function MarketingNav() {
 
   return (
     <>
-      {/* Backdrop blur when Products dropdown is open */}
+      {/* Backdrop blur when Products dropdown is open — visible blur of the page behind */}
       <AnimatePresence>
         {productsOpen && (
           <motion.div
@@ -323,7 +323,7 @@ export default function MarketingNav() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="pointer-events-none fixed inset-0 z-40 bg-ink/55 backdrop-blur-md"
+            className="pointer-events-none fixed inset-0 z-40 bg-ink/40 [backdrop-filter:blur(14px)] [-webkit-backdrop-filter:blur(14px)]"
             data-testid="nav-backdrop"
             aria-hidden="true"
           />
@@ -440,7 +440,7 @@ export default function MarketingNav() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[60] flex flex-col bg-ink/98 backdrop-blur-xl lg:hidden"
+            className="fixed inset-0 z-[60] flex flex-col bg-ink/45 [backdrop-filter:blur(22px)_saturate(140%)] [-webkit-backdrop-filter:blur(22px)_saturate(140%)] lg:hidden"
             data-testid="mobile-menu"
           >
             <div className="flex h-16 items-center justify-between px-6">
