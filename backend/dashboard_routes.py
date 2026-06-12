@@ -1,4 +1,4 @@
-"""Dashboard, rules, conversions, integrations, workspace & SDK-key APIs."""
+"""Dashboard, rules, conversions, integrations, workspace & SDK-key APIs, Blah, Blah, Blah"""
 import os
 import uuid
 import secrets
@@ -127,7 +127,7 @@ async def overview(range: str = Query("7d"), user: dict = Depends(get_current_us
     }
 
 
-# ---------- Sessions ----------
+# ----------The User Sessions ----------
 @api.get("/sessions")
 async def list_sessions(
     classification: str = Query(None), source: str = Query(None), device: str = Query(None),
@@ -187,7 +187,7 @@ async def session_action(sid: str, body: SessionActionRequest, user: dict = Depe
     return {"ok": True, "action": action}
 
 
-# ---------- Conversions ----------
+# ---------- Traffic Conversions ----------
 @api.get("/conversions")
 async def list_conversions(
     status: str = Query(None), classification: str = Query(None), type: str = Query(None),
@@ -223,7 +223,7 @@ async def conversion_action(cid: str, body: ConversionActionRequest, user: dict 
     return {"ok": True, "status": body.status}
 
 
-# ---------- Campaign quality ----------
+# ---------- AD Campaign quality ----------
 @api.get("/campaigns")
 async def campaigns(range: str = Query("30d"), user: dict = Depends(get_current_user)):
     wid = ws_id(user)
@@ -256,7 +256,7 @@ async def campaigns(range: str = Query("30d"), user: dict = Depends(get_current_
     return {"campaigns": rows}
 
 
-# ---------- Rules ----------
+# ---------- THEEE Rules ----------
 @api.get("/rules")
 async def list_rules(user: dict = Depends(get_current_user)):
     rules = await db.rules.find({"workspace_id": ws_id(user)}, {"_id": 0}).sort("priority", -1).to_list(200)
@@ -302,7 +302,7 @@ async def delete_rule(rid: str, user: dict = Depends(require_role("analyst"))):
     return {"ok": True}
 
 
-# ---------- Investigations & clusters ----------
+# ---------- Investigations & clusters and so on----------
 @api.get("/clusters")
 async def list_clusters(user: dict = Depends(get_current_user)):
     clusters = await db.fraud_clusters.find({"workspace_id": ws_id(user)}, {"_id": 0}) \
@@ -352,7 +352,7 @@ async def update_investigation(iid: str, body: InvestigationUpdate, user: dict =
     return await db.investigations.find_one({"workspace_id": ws_id(user), "id": iid}, {"_id": 0})
 
 
-# ---------- Integrations ----------
+# ---------- Platform Integrations ----------
 PROVIDER_NAMES = {"ga4": "Google Analytics 4", "google_ads": "Google Ads", "meta_ads": "Meta Ads",
                   "webhook": "Outbound Webhook", "hubspot": "HubSpot CRM"}
 
@@ -411,7 +411,7 @@ async def read_alert(aid: str, user: dict = Depends(get_current_user)):
     return {"ok": True}
 
 
-# ---------- Audit logs ----------
+# ---------- User Audit logs ----------
 @api.get("/audit-logs")
 async def audit_logs(user: dict = Depends(get_current_user)):
     items = await db.audit_logs.find({"workspace_id": ws_id(user)}, {"_id": 0}) \
