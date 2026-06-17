@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { randomUUID, randomBytes } from "crypto";
+import { UAParser } from "ua-parser-js";
+import geoip from "geoip-lite";
 import { db } from "@workspace/db";
 import {
   usersTable, workspacesTable, sitesTable, sessionsTable, conversionsTable,
@@ -1047,20 +1049,47 @@ router.post("/collect", async (req, res) => {
 
     const sessionId = body.session_id ?? randomUUID();
 
+    // --- UA parsing ---
+    const rawUa = String(sig["user_agent"] ?? req.headers["user-agent"] ?? "");
+    const uaResult = rawUa ? new UAParser(rawUa).getResult() : null;
+    const parsedBrowser = uaResult?.browser?.name ?? null;
+    const parsedOs = uaResult?.os?.name ?? null;
+    const uaDevice = uaResult?.device?.type;
+    const parsedDevice = uaDevice === "mobile" ? "Mobile"
+      : uaDevice === "tablet" ? "Tablet"
+      : sig["is_mobile"] ? "Mobile"
+      : "Desktop";
+
+    // --- Geo lookup from IP ---
+    const rawIp = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim()
+      ?? req.ip
+      ?? req.socket.remoteAddress
+      ?? "";
+    // Strip IPv6-mapped IPv4 prefix (::ffff:1.2.3.4)
+    const clientIp = rawIp.replace(/^::ffff:/, "");
+    const geo = clientIp ? geoip.lookup(clientIp) : null;
+    const parsedCountry = geo?.country ?? null;
+    const parsedCity = geo?.city || null;
+
     await db.insert(sessionsTable).values({
       id: randomUUID(),
       workspaceId: site.workspaceId,
       siteId,
       sessionId,
       fingerprintHash: body.fingerprint ?? null,
+      ip: clientIp || null,
+      country: parsedCountry,
+      city: parsedCity,
+      timezone: String(sig["timezone"] ?? ""),
       source: String(utm.source ?? "direct"),
       medium: utm.medium ?? null,
       campaign: utm.campaign ?? null,
       adSet: utm.ad_set ?? null,
       landingPage: body.page ?? null,
-      deviceType: sig["is_mobile"] ? "Mobile" : "Desktop",
-      ua: String(sig["user_agent"] ?? ""),
-      timezone: String(sig["timezone"] ?? ""),
+      deviceType: parsedDevice,
+      browser: parsedBrowser,
+      os: parsedOs,
+      ua: rawUa,
       classification,
       fraudScore,
       trustScore,

@@ -17,17 +17,36 @@ import {
 
 const COLORS = { trusted: "#34D399", suspicious: "#FBBF24", fraudulent: "#F87171" };
 
-// Map country name → flag emoji via regional indicator symbols
-function countryFlag(name) {
-  const codes = {
-    "United States": "🇺🇸", "Germany": "🇩🇪", "United Kingdom": "🇬🇧", "France": "🇫🇷",
-    "Canada": "🇨🇦", "Australia": "🇦🇺", "Brazil": "🇧🇷", "India": "🇮🇳", "China": "🇨🇳",
-    "Japan": "🇯🇵", "Russia": "🇷🇺", "Netherlands": "🇳🇱", "Singapore": "🇸🇬",
-    "Ukraine": "🇺🇦", "Poland": "🇵🇱", "Romania": "🇷🇴", "Turkey": "🇹🇷",
-    "Vietnam": "🇻🇳", "Thailand": "🇹🇭", "Indonesia": "🇮🇩", "Mexico": "🇲🇽",
-    "South Korea": "🇰🇷", "Spain": "🇪🇸", "Italy": "🇮🇹", "Sweden": "🇸🇪",
-  };
-  return codes[name] || "🌐";
+// Reverse map: full country name → ISO-2 code (for seeded data compatibility)
+const COUNTRY_TO_ISO = {
+  "United States": "US", "Germany": "DE", "United Kingdom": "GB", "France": "FR",
+  "Canada": "CA", "Australia": "AU", "Brazil": "BR", "India": "IN", "China": "CN",
+  "Japan": "JP", "Russia": "RU", "Netherlands": "NL", "Singapore": "SG",
+  "Ukraine": "UA", "Poland": "PL", "Romania": "RO", "Turkey": "TR",
+  "Vietnam": "VN", "Thailand": "TH", "Indonesia": "ID", "Mexico": "MX",
+  "South Korea": "KR", "Spain": "ES", "Italy": "IT", "Sweden": "SE",
+  "Nigeria": "NG", "Argentina": "AR", "Philippines": "PH", "Pakistan": "PK",
+};
+
+// Produce a flag emoji from either an ISO-2 code ("US") or a full country name
+function countryFlag(value) {
+  if (!value) return "🌐";
+  const iso = value.length === 2 ? value.toUpperCase() : (COUNTRY_TO_ISO[value] ?? null);
+  if (!iso) return "🌐";
+  return iso.split("").map((c) => String.fromCodePoint(c.charCodeAt(0) + 127397)).join("");
+}
+
+// Display a human-readable country name from ISO code or full name
+const isoNames = typeof Intl !== "undefined" && Intl.DisplayNames
+  ? new Intl.DisplayNames(["en"], { type: "region" })
+  : null;
+
+function countryName(value) {
+  if (!value) return "Unknown";
+  if (value.length === 2) {
+    try { return isoNames?.of(value.toUpperCase()) ?? value; } catch { return value; }
+  }
+  return value;
 }
 
 // Color a fraud rate value
@@ -236,7 +255,7 @@ export default function Overview() {
                   <tr key={row.country} className="border-b border-white/5 hover:bg-white/[0.02]">
                     <td className="px-3 py-2.5">
                       <span className="mr-2">{countryFlag(row.country)}</span>
-                      <span className="text-slate-200">{row.country}</span>
+                      <span className="text-slate-200">{countryName(row.country)}</span>
                     </td>
                     <td className="px-3 py-2.5 font-mono text-xs text-slate-300">{fmtNum(row.total)}</td>
                     <td className="px-3 py-2.5">
