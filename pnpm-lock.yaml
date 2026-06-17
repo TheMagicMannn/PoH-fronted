@@ -653,6 +653,15 @@ importers:
         specifier: ^0.31.10
         version: 0.31.10
 
+  lib/sdk:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.2
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
   scripts:
     devDependencies:
       '@types/node':

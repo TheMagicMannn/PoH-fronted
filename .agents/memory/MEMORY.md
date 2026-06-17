@@ -1,1 +1,2 @@
-- [Vite + JSX .js files](vite-jsx-js-files.md) — .js files with JSX need special vite.config.ts treatment to parse correctly
+- [Vite JSX in .js files](vite-jsx-js-files.md) — .js files with JSX need special vite.config.ts treatment to parse correctly
+- [SDK package location](sdk-package.md) — client SDK for PoH engines lives at lib/sdk (@workspace/sdk), covers Human/Traffic/Revenue/Analytics engines

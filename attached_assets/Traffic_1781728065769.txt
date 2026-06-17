@@ -1,0 +1,807 @@
+Traffic Intelligence Engine (TIEg) — Full Detailed Specification
+1. Purpose
+The Traffic Intelligence Engine is the subsystem responsible for measuring the quality, legitimacy, intent, and risk of inbound traffic before it reaches conversion, signup, transaction, or API execution.
+Its job is to answer:
+	1.	Where did this traffic come from?
+	2.	Does the source behave like real, valuable traffic?
+	3.	Is the traffic organic, paid, engineered, or fraudulent?
+	4.	Should this traffic be trusted, challenged, throttled, or blocked?
+Traffic Intelligence is not just attribution. It is traffic trust evaluation.
+ 
+⸻
+ 
+2. Core Mission
+The engine should:
+	•	Determine traffic source legitimacy
+	•	Detect bot traffic, synthetic clicks, fake leads, and referral abuse
+	•	Measure campaign quality and source integrity
+	•	Identify suspicious spikes, farms, and coordinated traffic manipulation
+	•	Score traffic before and after conversion
+	•	Distinguish high-intent human traffic from low-quality or malicious traffic
+	•	Improve marketing, fraud prevention, and trust decisions
+ 
+⸻
+ 
+3. Primary Outputs
+3.1 Traffic Trust Score
+A normalized score representing the trustworthiness of the traffic source and session origin.
+Recommended range:
+0–1000
+Interpretation example:
+	•	900–1000: Elite traffic
+	•	800–899: Trusted traffic
+	•	700–799: Healthy traffic
+	•	600–699: Acceptable traffic
+	•	500–599: Mixed quality
+	•	400–499: Suspicious traffic
+	•	300–399: High-risk traffic
+	•	0–299: Fraudulent or worthless traffic
+ 
+⸻
+ 
+3.2 Traffic Quality Score
+Measures how likely traffic is to produce meaningful, legitimate engagement.
+Recommended range:
+0–100
+ 
+⸻
+ 
+3.3 Source Integrity Score
+Measures whether the claimed source channel is credible and consistent with observed behavior.
+Examples:
+	•	Organic search that behaves like organic search
+	•	Paid social that actually matches the campaign
+	•	Referral traffic that aligns with the referring site
+	•	Direct traffic that is actually direct
+Recommended range:
+0–100
+ 
+⸻
+ 
+3.4 Campaign Integrity Score
+Measures whether a campaign is producing valid traffic or manipulated activity.
+Recommended range:
+0–100
+ 
+⸻
+ 
+3.5 Traffic Fraud Score
+Measures probability that traffic is synthetic, manipulated, incentivized, or fraudulent.
+Recommended range:
+0–100
+ 
+⸻
+ 
+3.6 Traffic Confidence Score
+Confidence in the engine’s classification based on signal completeness and source certainty.
+Recommended range:
+0–100
+ 
+⸻
+ 
+3.7 Traffic Risk Tier
+Categorical label used by policy and enforcement systems.
+	•	Low
+	•	Medium
+	•	Elevated
+	•	High
+	•	Critical
+ 
+⸻
+ 
+4. System Role in PoH Intelligence
+The Traffic Intelligence Engine sits between acquisition and trust decisioning.
+It helps answer whether a user session should be considered:
+	•	Real and valuable
+	•	Real but low intent
+	•	Artificially boosted
+	•	Manipulated by fraud
+	•	Bot-driven
+	•	Incentivized or low-quality
+	•	Coordinated through a traffic ring
+This engine feeds downstream modules like:
+	•	Trust Intelligence Engine
+	•	Human Intelligence Engine
+	•	Fraud Intelligence Engine
+	•	Decision Engine
+	•	Marketing attribution and analytics
+ 
+⸻
+ 
+5. Traffic Intelligence Architecture
+5.1 Ingestion Layer
+Collects traffic-related events from:
+	•	Page loads
+	•	Landing pages
+	•	Referrer headers
+	•	UTM parameters
+	•	Campaign IDs
+	•	Ad clicks
+	•	API requests
+	•	App installs
+	•	In-app referrals
+	•	Conversion funnels
+	•	Postback events
+	•	Server-side logs
+5.2 Normalization Layer
+Standardizes source and campaign fields.
+Examples:
+	•	Normalize channel labels
+	•	Resolve missing UTM values
+	•	Infer source from patterns
+	•	Deduplicate duplicated click events
+	•	Clean malformed referrers
+	•	Canonicalize domains and campaign identifiers
+5.3 Intelligence Layer
+Analyzes traffic patterns across:
+	•	Source
+	•	Session
+	•	Geography
+	•	Device
+	•	Behavior
+	•	Timing
+	•	Conversion path
+	•	Historical source reputation
+5.4 Scoring Layer
+Produces source, campaign, and traffic quality outputs.
+5.5 Decision Layer
+Applies policies such as:
+	•	Accept
+	•	Monitor
+	•	De-prioritize
+	•	Rate limit
+	•	Challenge
+	•	Exclude from attribution
+	•	Flag for review
+	•	Block
+ 
+⸻
+ 
+6. Traffic Signal Domains
+6.1 Source Intelligence
+This domain evaluates the declared origin of traffic.
+Source types
+	•	Direct
+	•	Organic search
+	•	Paid search
+	•	Paid social
+	•	Organic social
+	•	Referral
+	•	Email
+	•	Affiliate
+	•	Display
+	•	Push
+	•	SMS
+	•	In-app
+	•	API
+	•	Partner
+	•	Unknown
+Signals
+	•	Referrer validity
+	•	UTM consistency
+	•	Channel consistency
+	•	Landing page match
+	•	Source continuity over time
+	•	Destination relevance
+	•	Source reputation
+	•	Mismatch between declared and observed source
+Outputs
+	•	Source Trust Score
+	•	Source Confidence Score
+	•	Source Integrity Score
+Red flags
+	•	Missing or inconsistent UTM parameters
+	•	Impossible source attribution
+	•	Referrer spoofing
+	•	Direct traffic with bot-like patterns
+	•	Referral domains with abnormal bounce behavior
+	•	Source switching across repeated sessions
+ 
+⸻
+ 
+6.2 Campaign Intelligence
+Evaluates whether a marketing campaign is producing valid traffic.
+Signals
+	•	Campaign ID validity
+	•	UTM pattern integrity
+	•	Creative-to-conversion consistency
+	•	Click-to-session ratio
+	•	Click-to-conversion ratio
+	•	Device and geo consistency
+	•	Time-to-convert behavior
+	•	Repeat engagement patterns
+	•	Conversion clustering
+	•	Campaign velocity anomalies
+Outputs
+	•	Campaign Quality Score
+	•	Campaign Integrity Score
+	•	Campaign Fraud Score
+	•	Campaign Anomaly Score
+Red flags
+	•	Sudden spikes from one campaign
+	•	High click volume but low engagement
+	•	Large numbers of short sessions
+	•	Conversion bursts from the same network or device cluster
+	•	Abnormal install-to-action timelines
+	•	Suspicious affiliate or partner traffic
+ 
+⸻
+ 
+6.3 Engagement Intelligence
+Measures whether traffic behaves like genuine interested visitors.
+Signals
+	•	Time on page
+	•	Scroll depth
+	•	Page sequence
+	•	Reading pace
+	•	Interaction diversity
+	•	Session duration
+	•	Navigation depth
+	•	Return frequency
+	•	Content consumption
+	•	Multi-page flow coherence
+Outputs
+	•	Engagement Score
+	•	Intent Score
+	•	Session Value Score
+	•	Journey Coherence Score
+Red flags
+	•	Immediate bounce
+	•	No scroll or interaction
+	•	Repeated short sessions
+	•	Same page sequence across many sessions
+	•	Conversion without engagement
+	•	Script-like page access order
+ 
+⸻
+ 
+6.4 Conversion Integrity
+Evaluates whether a conversion is likely genuine.
+Conversion types
+	•	Signup
+	•	Lead submission
+	•	Purchase
+	•	App install
+	•	Trial start
+	•	Account activation
+	•	Referral completion
+	•	API registration
+Signals
+	•	Time from landing to conversion
+	•	Form completion speed
+	•	Field correction patterns
+	•	Duplicate conversions
+	•	Same-device or same-IP clustering
+	•	Payment or email integrity
+	•	Abandonment and retry patterns
+	•	Challenge pass rates
+Outputs
+	•	Conversion Confidence Score
+	•	Conversion Integrity Score
+	•	Conversion Fraud Score
+Red flags
+	•	Too-fast conversions
+	•	Repeated lead submissions
+	•	Mass signups from same infrastructure
+	•	Fake trial farm patterns
+	•	High conversion but low downstream value
+	•	Form-filling automation behavior
+ 
+⸻
+ 
+6.5 Referral Intelligence
+Evaluates referral sources and partner traffic.
+Signals
+	•	Referrer domain trust
+	•	Historical performance of referral source
+	•	Engagement quality from referral source
+	•	Duplicate referral patterns
+	•	Partner alignment
+	•	Fraud concentration
+	•	Incentive abuse patterns
+	•	Referral chain consistency
+Outputs
+	•	Referral Trust Score
+	•	Partner Trust Score
+	•	Referral Abuse Score
+Red flags
+	•	Abnormally high referral volume from a single domain
+	•	Low-quality referred sessions
+	•	Reused or manufactured referral patterns
+	•	Incentivized traffic with no retention
+	•	Fraud rings sharing referral structures
+ 
+⸻
+ 
+6.6 Geographic Intelligence
+Measures traffic quality by location and geo behavior.
+Signals
+	•	Country
+	•	Region
+	•	City
+	•	Geo velocity
+	•	Timezone consistency
+	•	Language consistency
+	•	Location-source mismatch
+	•	Cross-region repetition
+	•	Geo concentration
+Outputs
+	•	Geo Trust Score
+	•	Geo Anomaly Score
+	•	Location Consistency Score
+Red flags
+	•	Country mismatch with campaign market
+	•	High-volume traffic from unexpected regions
+	•	Geo impossible travel across sessions
+	•	Large clusters from low-value geographies when not expected
+	•	VPN-heavy distributions
+ 
+⸻
+ 
+6.7 Temporal Intelligence
+Evaluates timing behavior.
+Signals
+	•	Burst detection
+	•	Time-of-day patterns
+	•	Day-of-week patterns
+	•	Seasonal patterns
+	•	Session interval regularity
+	•	Inter-click timing
+	•	Conversion timing
+	•	Campaign pacing
+Outputs
+	•	Temporal Anomaly Score
+	•	Burst Risk Score
+	•	Rhythm Consistency Score
+Red flags
+	•	Mechanical timing between clicks
+	•	Massive bursts after quiet periods
+	•	Identical timing distributions across sessions
+	•	Overnight traffic spikes inconsistent with audience
+	•	Conversion waves from synchronized behavior
+ 
+⸻
+ 
+6.8 Device and Network Cross-Validation
+Traffic quality improves when source claims align with device and network behavior.
+Signals
+	•	IP reputation
+	•	Datacenter vs residential
+	•	Proxy or VPN usage
+	•	ASN quality
+	•	Device fingerprint stability
+	•	Browser consistency
+	•	Headless browser indicators
+	•	Geo-IP mismatch
+	•	Fingerprint reuse across traffic source clusters
+Outputs
+	•	Traffic-Device Match Score
+	•	Traffic-Network Match Score
+	•	Source Consistency Score
+Red flags
+	•	Paid traffic from datacenter infrastructure
+	•	Reused fingerprints across “unique” visitors
+	•	High-volume traffic from proxy networks
+	•	Device class mismatch with campaign audience
+	•	Claimed organic traffic that behaves like automation
+ 
+⸻
+ 
+6.9 Attributive Integrity
+Determines whether traffic attribution is clean, stable, and trustworthy.
+Signals
+	•	First-touch vs last-touch consistency
+	•	Attribution chain integrity
+	•	Cookie persistence
+	•	Session stitching reliability
+	•	Cross-device linkage confidence
+	•	Attribution timeout patterns
+	•	Self-referral or loopback anomalies
+Outputs
+	•	Attribution Integrity Score
+	•	Attribution Confidence Score
+	•	Self-Referral Risk Score
+Red flags
+	•	Self-referrals
+	•	Attribution loops
+	•	Cookie stuffing patterns
+	•	Channel hijacking
+	•	Repeated attribution resets
+	•	Unexplained last-touch dominance
+ 
+⸻
+ 
+7. Traffic Categories
+The engine should classify traffic into one or more of these states:
+	•	Organic genuine
+	•	Paid genuine
+	•	High-intent direct
+	•	Low-intent browsing
+	•	Incentivized traffic
+	•	Affiliate traffic
+	•	Referral traffic
+	•	Bot traffic
+	•	Scripted traffic
+	•	Click-farm traffic
+	•	Lead-farm traffic
+	•	Fraud ring traffic
+	•	Unknown or unclassified
+ 
+⸻
+ 
+8. Scoring Model
+8.1 Recommended weighting model
+A balanced scoring structure could be:
+	•	Source Intelligence: 15%
+	•	Campaign Intelligence: 15%
+	•	Engagement Intelligence: 15%
+	•	Conversion Integrity: 15%
+	•	Referral Intelligence: 10%
+	•	Geographic Intelligence: 10%
+	•	Temporal Intelligence: 10%
+	•	Device/Network Cross-Validation: 10%
+Weights should be configurable by tenant and use case.
+ 
+⸻
+ 
+8.2 Composite formula
+Traffic Trust Score =
+(Source Intelligence * 0.15) +
+(Campaign Intelligence * 0.15) +
+(Engagement Intelligence * 0.15) +
+(Conversion Integrity * 0.15) +
+(Referral Intelligence * 0.10) +
+(Geographic Intelligence * 0.10) +
+(Temporal Intelligence * 0.10) +
+(Device/Network Cross-Validation * 0.10)
+A separate fraud-adjusted version may apply penalties for confirmed manipulation:
+Final Traffic Trust = Base Trust - Fraud Penalties + Confidence Adjustments
+ 
+⸻
+ 
+9. Fraud Detection Logic
+The Traffic Intelligence Engine should detect:
+9.1 Bot traffic
+Indicators:
+	•	Very low engagement
+	•	Mechanical timing
+	•	Repeated session patterns
+	•	Headless browser signatures
+	•	High volume from one infrastructure source
+9.2 Click fraud
+Indicators:
+	•	Click bursts without downstream engagement
+	•	Invalid or repeated click chains
+	•	Repeated source clusters
+	•	Conversion-free click amplification
+9.3 Lead fraud
+Indicators:
+	•	Fake names, disposable emails, VOIP numbers
+	•	Duplicate submissions
+	•	Automated form completion
+	•	Suspiciously high lead generation from one source
+9.4 Referral fraud
+Indicators:
+	•	Artificial referral loops
+	•	Self-referral structures
+	•	Partner traffic with no real intent
+	•	Misleading source labels
+9.5 Incentive abuse
+Indicators:
+	•	Traffic designed only to earn rewards
+	•	Ultra-short engagement
+	•	Low retention
+	•	Repeated account creation patterns
+9.6 Traffic farming
+Indicators:
+	•	Large repeated patterns from low-quality networks
+	•	Clustered device fingerprints
+	•	Synchronized timing
+	•	Shared infrastructure among many accounts
+ 
+⸻
+ 
+10. Decision Engine
+Traffic decisions should be distinct from user trust decisions.
+10.1 Traffic actions
+	•	Allow
+	•	Allow and monitor
+	•	De-prioritize in attribution
+	•	Discount in analytics
+	•	Challenge
+	•	Rate limit
+	•	Quarantine
+	•	Exclude from reports
+	•	Block source
+	•	Escalate for review
+10.2 Example policy bands
+	•	850–1000: Accept and attribute fully
+	•	700–849: Accept, monitor, and attribute normally
+	•	550–699: Attribute cautiously; lower confidence
+	•	400–549: Discount attribution; flag for review
+	•	Below 400: Exclude or block depending on severity
+10.3 Decision modifiers
+	•	New campaign
+	•	Sensitive geography
+	•	High-value conversion
+	•	Known partner
+	•	Unknown source
+	•	Tenant risk tolerance
+	•	Historical source reputation
+	•	Prior abuse history
+ 
+⸻
+ 
+11. Explainability Engine
+Every traffic score must be explainable.
+Required reason codes
+	•	source_mismatch
+	•	campaign_spike
+	•	low_engagement
+	•	conversion_too_fast
+	•	datacenter_network
+	•	referral_loop
+	•	repeat_fingerprint
+	•	geo_inconsistency
+	•	burst_pattern
+	•	suspicious_attribution
+Example explanation payload
+{
+  "trafficTrustScore": 428,
+  "trafficQualityScore": 34,
+  "sourceIntegrityScore": 29,
+  "campaignIntegrityScore": 41,
+  "trafficFraudScore": 78,
+  "confidence": 92,
+  "riskTier": "high",
+  "decision": "discount_and_review",
+  "reasonCodes": [
+    "source_mismatch",
+    "low_engagement",
+    "campaign_spike",
+    "repeat_fingerprint"
+  ]
+}
+ 
+⸻
+ 
+12. Data Model
+12.1 Traffic Event
+Represents a single arrival, click, or acquisition event.
+Fields:
+	•	event_id
+	•	tenant_id
+	•	session_id
+	•	entity_id
+	•	timestamp
+	•	source_type
+	•	source_url
+	•	referrer
+	•	campaign_id
+	•	utm_source
+	•	utm_medium
+	•	utm_campaign
+	•	utm_content
+	•	utm_term
+	•	geo
+	•	device_id
+	•	ip_id
+	•	raw_metadata
+12.2 Campaign
+Represents a trackable acquisition initiative.
+Fields:
+	•	campaign_id
+	•	tenant_id
+	•	channel
+	•	source_partner
+	•	start_date
+	•	status
+	•	expected_audience
+	•	campaign_quality_score
+	•	campaign_fraud_score
+12.3 Source
+Represents a referrer, partner, or traffic origin.
+Fields:
+	•	source_id
+	•	source_type
+	•	source_domain
+	•	source_reputation
+	•	historical_quality
+	•	abuse_flags
+12.4 Attribution Record
+Represents how traffic was credited.
+Fields:
+	•	attribution_id
+	•	first_touch_source
+	•	last_touch_source
+	•	confidence
+	•	chain_integrity
+	•	override_flags
+ 
+⸻
+ 
+13. API Specification
+13.1 Score traffic
+POST /v1/traffic/score
+Request example:
+{
+  "tenantId": "tenant_123",
+  "sessionId": "sess_456",
+  "eventType": "landing_page_view",
+  "source": {
+    "referrer": "https://example.com",
+    "utmSource": "google",
+    "utmMedium": "cpc",
+    "utmCampaign": "brand_q1"
+  },
+  "signals": {
+    "geo": {},
+    "device": {},
+    "network": {},
+    "engagement": {},
+    "conversion": {}
+  }
+}
+Response example:
+{
+  "trafficTrustScore": 782,
+  "trafficQualityScore": 74,
+  "sourceIntegrityScore": 81,
+  "campaignIntegrityScore": 77,
+  "trafficFraudScore": 14,
+  "confidence": 90,
+  "riskTier": "medium",
+  "decision": "allow_and_monitor",
+  "reasonCodes": [
+    "good_source_alignment",
+    "normal_engagement",
+    "consistent_geo"
+  ]
+}
+13.2 Explain traffic score
+GET /v1/traffic/explain/{score_id}
+Returns:
+	•	feature contributions
+	•	source classification
+	•	anomaly flags
+	•	campaign diagnostics
+	•	attribution confidence
+13.3 Feedback endpoint
+POST /v1/traffic/feedback
+Used for:
+	•	confirmed fraud
+	•	invalid lead
+	•	genuine conversion
+	•	campaign review outcome
+	•	partner abuse confirmation
+ 
+⸻
+ 
+14. Performance Requirements
+Latency targets
+	•	P50: under 50 ms
+	•	P95: under 100 ms
+	•	P99: under 250 ms
+Throughput targets
+	•	High-volume acquisition streams
+	•	Burst-tolerant scoring
+	•	Real-time campaign monitoring
+	•	Batch recalculation support
+Availability targets
+	•	99.99% uptime for scoring endpoints
+	•	Graceful degradation when external attribution sources fail
+ 
+⸻
+ 
+15. Reliability and Fallbacks
+When key attribution or source data is missing:
+	•	Use partial scoring
+	•	Infer source from behavior and network signals
+	•	Apply conservative confidence penalties
+	•	Preserve the event for later recomputation
+	•	Avoid hard-blocking without sufficient evidence unless fraud confidence is high
+Fallback modes:
+	•	Rule-only
+	•	Partial-model
+	•	Cached reputation
+	•	Delayed recomputation
+	•	Manual review mode
+ 
+⸻
+ 
+16. Security and Privacy Requirements
+Security
+	•	Encrypt in transit and at rest
+	•	Authenticate all API calls
+	•	Sign or verify event payloads where possible
+	•	Prevent replay of traffic events
+	•	Rate limit abusive scoring requests
+	•	Audit all policy decisions
+Privacy
+	•	Minimize collection of personally identifying traffic data
+	•	Hash identifiers when possible
+	•	Apply retention windows
+	•	Support deletion and export policies
+	•	Separate raw traffic logs from derived intelligence
+ 
+⸻
+ 
+17. Monitoring and Observability
+Key dashboards
+	•	Traffic Trust Score distribution
+	•	Campaign quality by source
+	•	Fraud rate by channel
+	•	Conversion integrity trends
+	•	Bounce and engagement anomalies
+	•	Attribution confidence by campaign
+	•	Invalid lead rate
+	•	Source spike detection
+	•	Partner abuse monitoring
+	•	Geo concentration analysis
+Alerts
+	•	Sudden campaign spike
+	•	Bounce rate anomaly
+	•	Fraud score surge
+	•	Referral loop detection
+	•	Fingerprint reuse spikes
+	•	Source integrity collapse
+	•	Attribution confidence drop
+ 
+⸻
+ 
+18. Governance and Versioning
+Track every release of:
+	•	Signal schema
+	•	Feature transformations
+	•	Model weights
+	•	Thresholds
+	•	Reason codes
+	•	Policy rules
+	•	Source reputation tables
+Each score should retain:
+	•	model_version
+	•	policy_version
+	•	feature_version
+	•	timestamp
+	•	score_id
+	•	explanation snapshot
+ 
+⸻
+ 
+19. Recommended Output Contract
+A full response should look like this:
+{
+  "trafficTrustScore": 0,
+  "trafficQualityScore": 0,
+  "sourceIntegrityScore": 0,
+  "campaignIntegrityScore": 0,
+  "trafficFraudScore": 0,
+  "confidence": 0,
+  "riskTier": "low",
+  "decision": "allow",
+  "sourceType": "organic",
+  "attributionConfidence": 0,
+  "moduleScores": {
+    "source": 0,
+    "campaign": 0,
+    "engagement": 0,
+    "conversion": 0,
+    "referral": 0,
+    "geo": 0,
+    "temporal": 0,
+    "deviceNetwork": 0
+  },
+  "reasonCodes": [],
+  "topSignals": {
+    "positive": [],
+    "negative": []
+  },
+  "modelVersion": "traffic-1.0.0"
+}
+ 
+⸻
+ 
+20. Positioning Statement
+Traffic Intelligence Engine is the trust layer for acquisition data, converting raw traffic signals into a reliable measure of source quality, campaign integrity, and conversion legitimacy.
+It gives PoH Intelligence the ability to distinguish real audience demand from fabricated, manipulated, or low-value traffic before that traffic contaminates analytics, attribution, fraud systems, or trust scores.
+If you want, I can also turn this into a  formal enterprise architecture spec, a  technical PRD, or a  clean investor-ready DOCX/PDF.

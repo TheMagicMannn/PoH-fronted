@@ -1,0 +1,841 @@
+Human Authenticity Intelligence Engine
+
+I’ve drafted the full Human Authenticity Intelligence Engine specification as a formal engineering document.
+
+It covers the purpose, signal families, detection modules, scoring architecture, decision logic, API contracts, event schema, storage model, modeling approach, security, testing, metrics, and rollout phases.
+
+Human Authenticity Intelligence Engine
+Detailed Engine Specification
+PoH Intelligence Platform v2.0
+Status: Implementation Specification
+Owner: PoH Intelligence
+Last Updated: June 2026
+ 
+⸻
+ 
+1. PURPOSE
+The Human Authenticity Intelligence Engine determines whether a session, visitor, device, or interaction originates from a real human, a suspicious human, an automated system, an emulator, a bot, a farmed account, or a synthetic/abusive actor.
+The engine is designed to power:
+	•	Human verification
+	•	Bot detection
+	•	Automation detection
+	•	Fraud scoring inputs
+	•	Trust scoring inputs
+	•	Revenue protection decisions
+	•	Session risk classification
+	•	Challenge/allow/block decisioning
+The engine must work across:
+	•	Browser SDK
+	•	Server SDK
+	•	Mobile SDK
+	•	API-based scoring
+	•	Batch replay / retrospective analysis
+ 
+⸻
+ 
+2. ENGINE OBJECTIVES
+Primary Objective
+Produce a calibrated Human Authenticity Score from 0 to 100 with a confidence value and supporting reasons.
+Secondary Objectives
+	•	Detect non-human or low-human-likelihood behavior
+	•	Provide interpretable reason codes
+	•	Support real-time decisioning with low latency
+	•	Minimize false positives on legitimate users
+	•	Adapt to changing automation patterns over time
+	•	Operate with privacy-aware collection controls
+ 
+⸻
+ 
+3. SCOPE
+In Scope
+	•	Human score generation
+	•	Behavior feature extraction
+	•	Browser integrity validation
+	•	Headless and automation detection
+	•	Interaction rhythm analysis
+	•	Session-level classification
+	•	Device and environment signal analysis
+	•	Human authenticity explanations
+	•	Decision outputs for allow/challenge/step-up/block
+	•	Feedback ingestion for model improvement
+Out of Scope
+	•	Identity verification via government ID
+	•	KYC/KYB workflows
+	•	Payment card authorization decisions
+	•	Full account reputation network logic
+	•	Marketing attribution logic beyond human confidence support
+ 
+⸻
+ 
+4. DEFINITIONS
+Human Authenticity
+The likelihood that the entity generating the session is a real person operating a non-automated browser or app environment.
+Session
+A contiguous sequence of user interactions tied to one visitor/device context.
+Visitor
+A logical user identity, potentially anonymous, stitched across sessions.
+Device
+A browser, mobile device, emulator, or other client environment.
+Automation
+Scripted, programmatic, or bot-like behavior including headless browsers, automation frameworks, scripted clicks, or synthetic interaction patterns.
+Confidence
+A value between 0.0 and 1.0 indicating how stable and supported the score is.
+Reason Code
+A machine-readable explanation for why the score is high or low.
+ 
+⸻
+ 
+5. OUTPUT CONTRACT
+5.1 Human Authenticity Score
+Range: 0-100
+Interpretation:
+	•	90-100: Strong human likelihood
+	•	70-89: Likely human with some anomalies
+	•	40-69: Suspicious / mixed signals
+	•	0-39: Strong automation or non-human likelihood
+5.2 Human Confidence
+Range: 0.0-1.0
+Interpretation:
+	•	<0.50: Low confidence
+	•	0.50-0.75: Moderate confidence
+	•	0.75: High confidence
+5.3 Human Classification
+One of:
+	•	human
+	•	suspicious_human
+	•	automation
+	•	bot
+	•	emulator
+	•	uncertain
+5.4 Recommended Decision
+One of:
+	•	allow
+	•	challenge
+	•	step_up
+	•	block
+5.5 Reason Codes
+A bounded enum of machine-readable explanations.
+ 
+⸻
+ 
+6. ENGINE INPUTS
+The engine consumes raw and derived signals from browser, server, mobile, and historical layers.
+6.1 Device Signals
+	•	User agent string
+	•	Client hints
+	•	OS family and version
+	•	Browser family and version
+	•	Screen dimensions
+	•	Pixel ratio
+	•	Hardware concurrency
+	•	Device memory
+	•	WebGL signature
+	•	Canvas signature
+	•	Audio fingerprint
+	•	Font availability
+	•	Touch capability
+	•	Pointer capability
+	•	Battery API availability if permitted
+	•	Language / locale
+	•	Timezone
+	•	Storage availability
+	•	Permission state patterns
+	•	Extension / tamper indicators
+6.2 Behavioral Signals
+	•	Mouse movement trajectories
+	•	Cursor acceleration and deceleration
+	•	Click timing
+	•	Scroll cadence
+	•	Scroll depth patterns
+	•	Typing cadence
+	•	Key hold times
+	•	Inter-key intervals
+	•	Focus / blur sequence
+	•	Touch gestures
+	•	Tap pressure where available
+	•	Gesture consistency
+	•	Navigation pacing
+	•	Form interaction patterns
+	•	Idle / active transitions
+6.3 Browser Integrity Signals
+	•	Headless indicators
+	•	WebDriver indicators
+	•	Automation flags
+	•	DOM tamper signals
+	•	Navigator anomalies
+	•	Permission inconsistencies
+	•	API patching / monkey patching indicators
+	•	Prototype chain tampering
+	•	Console or devtools-trigger patterns where available
+	•	Synthetic event markers
+6.4 Network Signals
+	•	IP reputation
+	•	ASN type
+	•	Datacenter / residential / mobile classification
+	•	Proxy / VPN / Tor indicators
+	•	Geo mismatch patterns
+	•	IP velocity patterns
+	•	Connection consistency
+	•	TLS / JA3-like derived fingerprints where legally and technically appropriate
+6.5 Historical Signals
+	•	Prior session authenticity
+	•	Prior fraud outcomes
+	•	Prior challenge outcomes
+	•	Device history
+	•	Visitor history
+	•	Site-specific trust history
+	•	Behavior consistency history
+6.6 Transactional Context Signals
+	•	Signup
+	•	Login
+	•	Checkout
+	•	Lead submission
+	•	Password reset
+	•	High-value actions
+	•	Friction points
+ 
+⸻
+ 
+7. SIGNAL COLLECTION REQUIREMENTS
+7.1 Collection Principles
+	•	Collect only what is necessary for legitimate fraud prevention and trust scoring.
+	•	Respect consent and jurisdictional restrictions.
+	•	Avoid persistent identifiers beyond the platform’s stated purpose.
+	•	Support graceful degradation when signals are unavailable.
+7.2 Required Client Permissions
+The SDK must function even if some browser features are blocked. The engine must rely on signal fusion rather than any single fingerprint field.
+7.3 Collection Timing
+Signals should be collected at:
+	•	session start
+	•	first interaction
+	•	form interaction
+	•	significant user events
+	•	pre-decision moments
+	•	heartbeat intervals
+ 
+⸻
+ 
+8. FEATURE GROUPS
+The engine is composed of feature families. Each family outputs normalized features into the scoring pipeline.
+8.1 Browser Integrity Feature Group
+Purpose: detect tampering, automation, and instrumented browsers.
+Features:
+	•	headless_probability
+	•	webdriver_present
+	•	browser_api_inconsistency_score
+	•	navigator_anomaly_score
+	•	permission_anomaly_score
+	•	prototype_tampering_score
+	•	extension_tamper_score
+	•	synthetic_dom_event_score
+	•	automation_framework_signature_score
+	•	devtools_trigger_score
+8.2 Human Behavior Feature Group
+Purpose: measure natural human interaction patterns.
+Features:
+	•	mouse_path_entropy
+	•	cursor_micro_jitter
+	•	cursor_acceleration_profile
+	•	dwell_time_distribution
+	•	scroll_variance
+	•	scroll_pause_ratio
+	•	click_interval_entropy
+	•	keypress_dynamics
+	•	inter_key_variance
+	•	focus_blur_naturalness
+	•	touch_gesture_naturalness
+	•	gesture_recovery_time
+	•	idle_transition_naturalness
+8.3 Device Consistency Feature Group
+Purpose: identify device continuity and anomalies.
+Features:
+	•	device_stability_score
+	•	device_reuse_score
+	•	browser_version_consistency
+	•	locale_consistency
+	•	timezone_consistency
+	•	screen_consistency
+	•	hardware_consistency
+	•	fingerprint_drift_score
+	•	device_change_velocity
+	•	session_device_distance
+8.4 Network Reputation Feature Group
+Purpose: assess traffic origin and network trust.
+Features:
+	•	ip_reputation_score
+	•	asn_risk_score
+	•	datacenter_probability
+	•	residential_proxy_probability
+	•	mobile_proxy_probability
+	•	vpn_probability
+	•	tor_probability
+	•	geo_anomaly_score
+	•	ip_velocity_score
+	•	network_cluster_density
+8.5 Historical Authenticity Feature Group
+Purpose: use prior outcomes to strengthen confidence.
+Features:
+	•	prior_human_confirmations
+	•	prior_challenges_passed
+	•	prior_blocks
+	•	prior_fraud_flags
+	•	time_since_last_seen
+	•	account_age_effect
+	•	visitor_reputation_decay
+	•	device_reputation_decay
+	•	site_history_alignment
+ 
+⸻
+ 
+9. DETAILED DETECTION MODULES
+9.1 Headless Browser Detection Module
+Purpose
+Detect browser environments commonly used for automation or scraping.
+Signals
+	•	navigator.webdriver
+	•	missing browser plugins in improbable contexts
+	•	inconsistent window metrics
+	•	headless rendering artifacts
+	•	canvas / WebGL signature oddities
+	•	timing patterns consistent with automation
+	•	synthetic event sequences
+Output
+	•	headless_probability
+	•	headless_reason_codes
+Notes
+This module must not rely on any single flag. It must combine multiple weak signals.
+ 
+⸻
+ 
+9.2 Automation Framework Detection Module
+Purpose
+Identify likely use of Puppeteer, Playwright, Selenium, Appium, or custom automation wrappers.
+Signals
+	•	framework timing signatures
+	•	DOM access timing
+	•	event generation cadence
+	•	missing natural pointer movement
+	•	click-to-navigation latency patterns
+	•	page instrumentation anomalies
+Output
+	•	automation_probability
+	•	framework_hint
+ 
+⸻
+ 
+9.3 Human Motion Analysis Module
+Purpose
+Measure whether cursor, touch, and scroll motion resembles a real human.
+Signals
+	•	non-linear cursor paths
+	•	micro-corrections
+	•	speed variability
+	•	pause behavior
+	•	gesture hesitations
+	•	overshoot/undershoot patterns
+	•	movement entropy
+Output
+	•	motion_humanity_score
+	•	motion_confidence
+ 
+⸻
+ 
+9.4 Typing Dynamics Module
+Purpose
+Evaluate typing cadence and natural key behavior.
+Signals
+	•	key hold duration
+	•	inter-key intervals
+	•	burst typing patterns
+	•	correction behavior
+	•	paste-heavy input
+	•	field switching pace
+	•	backspace patterns
+Output
+	•	typing_humanity_score
+	•	typing_anomaly_score
+ 
+⸻
+ 
+9.5 Session Rhythm Module
+Purpose
+Assess whether the entire session rhythm feels human.
+Signals
+	•	page-to-page timing
+	•	exploration pauses
+	•	repeated navigation loops
+	•	form hesitation
+	•	total session pace
+	•	interaction concentration
+Output
+	•	session_rhythm_score
+ 
+⸻
+ 
+9.6 Device Fingerprint Stability Module
+Purpose
+Track fingerprint changes and inconsistencies over time.
+Signals
+	•	canvas hash stability
+	•	WebGL hash stability
+	•	font set stability
+	•	timezone stability
+	•	locale stability
+	•	screen stability
+	•	browser version drift
+Output
+	•	fingerprint_stability_score
+	•	drift_reason_codes
+ 
+⸻
+ 
+9.7 Network Risk Module
+Purpose
+Assess whether the network source is typical of fraud or automation.
+Signals
+	•	proxy use
+	•	VPN use
+	•	datacenter hosting
+	•	Tor presence
+	•	ASN reputation
+	•	IP history
+	•	geo mismatch
+Output
+	•	network_risk_score
+ 
+⸻
+ 
+10. SCORING ARCHITECTURE
+10.1 Architecture Overview
+The engine uses a multi-stage scoring pipeline:
+	1.	Signal validation
+	2.	Feature normalization
+	3.	Feature group scoring
+	4.	Model inference
+	5.	Calibration
+	6.	Rule overlay
+	7.	Confidence estimation
+	8.	Decision mapping
+ 
+⸻
+ 
+10.2 Feature Group Weights
+Suggested default weights:
+	•	Browser Integrity: 25%
+	•	Human Behavior: 25%
+	•	Device Consistency: 15%
+	•	Network Reputation: 20%
+	•	Historical Authenticity: 15%
+Weights should be configurable per customer tier and use case.
+ 
+⸻
+ 
+10.3 Final Human Authenticity Score Formula
+final_score =
+  0.25 * browser_integrity_score +
+  0.25 * human_behavior_score +
+  0.15 * device_consistency_score +
+  0.20 * network_reputation_score +
+  0.15 * historical_authenticity_score
+Then apply calibration and policy adjustments.
+ 
+⸻
+ 
+10.4 Confidence Estimation
+Confidence should be reduced when:
+	•	too many signals are missing
+	•	the session is too short
+	•	the device is unseen and uncorrelated
+	•	the network is noisy or masked
+	•	the model has low support for the observed pattern
+Confidence should be increased when:
+	•	multiple independent signals agree
+	•	historical reputation exists
+	•	interaction volume is sufficient
+	•	behavior and device data are stable
+Suggested confidence formula:
+confidence = signal_completeness * model_agreement * historical_support * calibration_quality
+Values must be clamped to 0.0–1.0.
+ 
+⸻
+ 
+11. DECISION LOGIC
+11.1 Decision Thresholds
+Default thresholds:
+	•	allow: >= 85
+	•	step_up: 65-84
+	•	challenge: 40-64
+	•	block: < 40
+These thresholds must be customer-configurable.
+11.2 Decision Rules
+A score alone should not decide every case.
+Examples:
+	•	High score + high confidence => allow
+	•	Moderate score + high transaction value => step_up or challenge
+	•	Low score + proxy + automation => block
+	•	Low score + missing signals + low confidence => challenge rather than block
+11.3 Decision Hierarchy
+Hard blocks may override soft score outputs when severe rules trigger:
+	•	confirmed automation signatures
+	•	high-confidence datacenter proxy abuse
+	•	repeated synthetic behavior
+	•	known malicious device cluster
+ 
+⸻
+ 
+12. REASON CODE SPECIFICATION
+Reason codes must be deterministic and stable.
+Examples
+	•	headless_browser_detected
+	•	webdriver_detected
+	•	automation_framework_signature
+	•	cursor_entropy_low
+	•	typing_pattern_nonhuman
+	•	scroll_cadence_suspicious
+	•	device_fingerprint_drift
+	•	inconsistent_timezone
+	•	ip_datacenter_risk
+	•	vpn_probability_high
+	•	proxy_cluster_match
+	•	historical_human_match
+	•	consistent_device_behavior
+	•	natural_session_rhythm
+	•	low_signal_confidence
+Each score response should include 1-5 top reasons.
+ 
+⸻
+ 
+13. EXPLANATION LAYER
+The engine must produce human-readable and machine-readable explanations.
+Explanation Types
+	•	concise summary
+	•	detailed investigator summary
+	•	customer-facing explanation
+	•	analyst-facing evidence list
+Example
+Summary: Session appears human based on stable device history, natural mouse motion, and consistent typing rhythm.
+Evidence:
+	•	Known device reused across prior trusted sessions
+	•	Cursor movement contained natural micro-corrections
+	•	Typing cadence showed realistic inter-key variance
+	•	No browser automation indicators detected
+ 
+⸻
+ 
+14. API CONTRACTS
+14.1 Analyze Request
+{
+  "site_id": "site_123",
+  "session_id": "ses_123",
+  "visitor_id": "vis_123",
+  "user_id": "usr_123",
+  "context": {
+    "event_name": "lead.submitted",
+    "url": "https://example.com/contact",
+    "referrer": "https://google.com"
+  },
+  "signals": {
+    "device": {},
+    "behavior": {},
+    "network": {},
+    "history": {}
+  }
+}
+14.2 Analyze Response
+{
+  "request_id": "req_123",
+  "session_id": "ses_123",
+  "scores": {
+    "human": {
+      "score": 94,
+      "confidence": 0.93,
+      "level": "low"
+    }
+  },
+  "classification": "human",
+  "decision": "allow",
+  "reasons": [
+    "natural_session_rhythm",
+    "consistent_device_behavior"
+  ],
+  "model_version": "human-v1.0.0",
+  "policy_version": "policy-2026-06",
+  "expires_at": "2026-06-12T21:15:01Z"
+}
+14.3 Decision Endpoint
+Used when a product or backend service needs a hard decision.
+ 
+⸻
+ 
+15. EVENT SCHEMA
+15.1 Human Analysis Event
+{
+  "event_id": "evt_123",
+  "event_type": "human.analyzed",
+  "schema_version": "2.0",
+  "site_id": "site_123",
+  "session_id": "ses_123",
+  "visitor_id": "vis_123",
+  "device_id": "dev_123",
+  "sent_at": "2026-06-12T21:10:01Z",
+  "payload": {
+    "human_score": 94,
+    "confidence": 0.93,
+    "classification": "human",
+    "reasons": ["natural_session_rhythm"]
+  }
+}
+15.2 Challenge Event
+{
+  "event_type": "human.challenge.required",
+  "payload": {
+    "reason": "low_confidence",
+    "challenge_type": "step_up"
+  }
+}
+15.3 Block Event
+{
+  "event_type": "human.blocked",
+  "payload": {
+    "reason": "automation_framework_signature"
+  }
+}
+ 
+⸻
+ 
+16. STORAGE AND DATA MODEL
+16.1 PostgreSQL Tables
+human_assessments
+	•	id
+	•	workspace_id
+	•	site_id
+	•	session_id
+	•	visitor_id
+	•	device_id
+	•	human_score
+	•	confidence
+	•	classification
+	•	decision
+	•	model_version
+	•	policy_version
+	•	created_at
+human_reasons
+	•	id
+	•	assessment_id
+	•	reason_code
+	•	reason_weight
+	•	created_at
+human_features
+	•	id
+	•	assessment_id
+	•	feature_name
+	•	feature_value
+	•	feature_group
+	•	created_at
+human_feedback
+	•	id
+	•	assessment_id
+	•	feedback_type
+	•	feedback_value
+	•	created_at
+16.2 ClickHouse Tables
+	•	human_score_timeseries
+	•	behavior_feature_timeseries
+	•	automation_detection_timeseries
+	•	decision_outcomes
+16.3 Redis Keys
+	•	human:session:{session_id}
+	•	human:visitor:{visitor_id}
+	•	human:device:{device_id}
+	•	human:score:{assessment_id}
+ 
+⸻
+ 
+17. MODELING APPROACH
+17.1 Recommended Model Stack
+Use a layered ensemble:
+	•	rules layer for hard signals
+	•	gradient-boosted model for structured features
+	•	sequence model for session behavior
+	•	calibration layer for score normalization
+17.2 Candidate Model Types
+	•	XGBoost / LightGBM for tabular signals
+	•	Logistic regression for calibration
+	•	Sequence classifier for session rhythms
+	•	Outlier detection for anomaly flags
+	•	Similarity model for device/session clustering
+17.3 Feature Normalization
+All features must be transformed into comparable numeric ranges:
+	•	binary -> 0/1
+	•	probabilities -> 0-1
+	•	counts -> log-scaled
+	•	time intervals -> bucketed or normalized
+	•	categorical -> encoded
+ 
+⸻
+ 
+18. RULES ENGINE INTEGRATION
+The engine must expose feature and reason outputs to the policy engine.
+Example rules
+	•	block if automation_probability > 0.95
+	•	challenge if human_score < 70 and confidence < 0.80
+	•	allow if human_score > 90 and trust_score > 85
+The rules engine should be able to override or amend model outputs.
+ 
+⸻
+ 
+19. PERFORMANCE REQUIREMENTS
+Real-Time API Latency
+	•	P95 under 100 ms for decision calls on warm path
+	•	P95 under 200 ms for full analysis calls
+Throughput Targets
+	•	Must support high-volume event ingestion
+	•	Must handle burst traffic during campaigns or attacks
+Resilience Requirements
+	•	Graceful degradation if some signals are unavailable
+	•	Retry-safe requests
+	•	Idempotent analysis requests
+ 
+⸻
+ 
+20. PRIVACY AND COMPLIANCE REQUIREMENTS
+	•	Support consent gating
+	•	Respect regional restrictions
+	•	Minimize persistent storage of raw sensitive signal material
+	•	Support customer retention policies
+	•	Provide export and deletion workflows
+	•	Separate operational data from analytics data where necessary
+ 
+⸻
+ 
+21. SECURITY REQUIREMENTS
+	•	Signed SDK requests
+	•	API authentication and authorization
+	•	Anti-replay request protection
+	•	Rate limiting
+	•	Audit logging for scoring changes and policy changes
+	•	Secure secret storage
+	•	Encrypted transport and storage
+ 
+⸻
+ 
+22. TESTING REQUIREMENTS
+Unit Tests
+	•	feature extraction
+	•	signal normalization
+	•	reason code mapping
+	•	decision threshold logic
+Integration Tests
+	•	SDK to API flow
+	•	event ingestion
+	•	score generation
+	•	decision generation
+	•	webhook emission
+Adversarial Tests
+	•	headless browser simulation
+	•	automation framework simulation
+	•	proxy/VPN simulation
+	•	typing bot simulation
+	•	event replay attacks
+Regression Tests
+	•	ensure threshold tuning does not increase false positives
+	•	validate score consistency across releases
+ 
+⸻
+ 
+23. FEEDBACK LOOP
+The engine must accept feedback from:
+	•	manual analyst review
+	•	customer overrides
+	•	challenge success/failure
+	•	confirmed fraud outcomes
+	•	confirmed human conversions
+Feedback should update:
+	•	weights
+	•	thresholds
+	•	calibration layers
+	•	model retraining datasets
+ 
+⸻
+ 
+24. METRICS AND SUCCESS CRITERIA
+Product Metrics
+	•	True positive rate for automation detection
+	•	False positive rate on legitimate humans
+	•	Challenge completion rate
+	•	Block accuracy
+	•	Confidence calibration error
+Operational Metrics
+	•	P95 latency
+	•	Ingestion success rate
+	•	Model availability
+	•	Feature completeness rate
+Business Metrics
+	•	conversion protection lift
+	•	fraud reduction
+	•	ad waste reduction
+	•	customer retention impact
+ 
+⸻
+ 
+25. VERSIONING
+Schema Version
+2.0
+Model Version
+human-v1.x.x
+Policy Version
+policy-YYYY-MM
+SDK Version
+2.x.x
+Version changes must be backward compatible when possible.
+ 
+⸻
+ 
+26. IMPLEMENTATION PHASES
+Phase 1
+	•	browser and server signal collection
+	•	analysis API
+	•	baseline scoring
+	•	reason codes
+	•	dashboard visibility
+Phase 2
+	•	automation detection
+	•	behavior analytics
+	•	confidence calibration
+	•	rules engine integration
+Phase 3
+	•	historical authenticity
+	•	device consistency modeling
+	•	challenge/step-up controls
+	•	feedback loop
+Phase 4
+	•	advanced adversarial detection
+	•	model ensemble improvements
+	•	enterprise explainability
+ 
+⸻
+ 
+27. ACCEPTANCE CRITERIA
+The Human Authenticity Intelligence Engine is complete when:
+	•	it can ingest signals from browser and server contexts
+	•	it produces a calibrated human score with confidence
+	•	it returns at least one actionable reason code for low-confidence decisions
+	•	it supports allow/challenge/step-up/block outputs
+	•	it integrates with the platform decision engine
+	•	it performs within latency targets
+	•	it supports feedback-driven improvement
+ 
+⸻
+ 
+28. OPEN QUESTIONS
+These should be resolved before implementation freeze:
+	•	Which signals require explicit consent in each target market?
+	•	Which signals are strictly browser-only versus server-enriched?
+	•	What default thresholds should be used per plan tier?
+	•	What percentage of decisions should be auto-blocked versus challenged?
+	•	Which reason codes are customer-visible versus internal-only?
+ 
+⸻
+ 
+29. SUMMARY
+The Human Authenticity Intelligence Engine is a multi-signal, real-time classification system that converts device, behavior, network, and historical features into a human authenticity score, confidence value, classification, and decision. It is designed to be explainable, configurable, low-latency, and extensible enough to power the PoH Intelligence platform at scale.

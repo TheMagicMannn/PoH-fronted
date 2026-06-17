@@ -1,0 +1,802 @@
+Revenue Protection Engine (RPE) — Full Detailed Specification
+1. Purpose
+The Revenue Protection Engine is the platform subsystem responsible for detecting, preventing, scoring, and responding to threats that reduce realized revenue, distort financial performance, or create avoidable loss across the customer lifecycle.
+Its primary job is to answer:
+	1.	Is this revenue real, collectible, and durable?
+	2.	Is this transaction, account, or customer likely to generate loss later?
+	3.	Is there evidence of chargeback risk, refund abuse, promo abuse, subscription fraud, billing fraud, or revenue leakage?
+	4.	What action should the platform take now to preserve revenue?
+Revenue Protection is broader than fraud detection. It includes fraud, abuse, leakage, operational loss, and financial integrity monitoring.
+ 
+⸻
+ 
+2. Core Objectives
+The engine should:
+	•	Protect revenue from fraud, abuse, and misuse
+	•	Detect chargeback and refund risk early
+	•	Reduce failed payments, involuntary churn, and bad debt
+	•	Identify promo abuse, coupon abuse, and incentive abuse
+	•	Prevent subscription fraud and trial abuse
+	•	Detect account takeover that leads to financial loss
+	•	Surface revenue leakage across checkout, billing, support, and retention flows
+	•	Support real-time decisioning and post-event investigations
+	•	Provide explainable risk reasons for every score
+	•	Feed downstream trust, fraud, finance, and retention systems
+ 
+⸻
+ 
+3. Primary Outputs
+3.1 Revenue Protection Score
+A unified score representing the overall likelihood that revenue from the entity, transaction, or account is at risk.
+Recommended range:
+0–1000
+Interpretation example:
+	•	900–1000: Highly Protected
+	•	800–899: Low Risk
+	•	700–799: Acceptable Risk
+	•	600–699: Elevated Risk
+	•	500–599: Mixed Risk
+	•	400–499: High Risk
+	•	300–399: Severe Risk
+	•	0–299: Critical Revenue Threat
+3.2 Revenue Risk Score
+Measures probability of monetization loss.
+Recommended range:
+0–100
+3.3 Chargeback Risk Score
+Estimates likelihood of chargeback or dispute.
+Recommended range:
+0–100
+3.4 Refund Abuse Score
+Estimates likelihood of abusive refund or return behavior.
+Recommended range:
+0–100
+3.5 Promo Abuse Score
+Estimates likelihood of coupon, trial, referral, or incentive abuse.
+Recommended range:
+0–100
+3.6 Revenue Confidence Score
+Confidence in the engine’s assessment based on signal completeness and consistency.
+Recommended range:
+0–100
+3.7 Risk Tier
+Categorical label used for policy and operations.
+	•	Low
+	•	Medium
+	•	Elevated
+	•	High
+	•	Critical
+3.8 Decision Action
+Recommended action to protect revenue.
+Possible actions:
+	•	Approve
+	•	Approve and monitor
+	•	Require step-up verification
+	•	Hold for review
+	•	Limit benefits
+	•	Delay fulfillment
+	•	Block transaction
+	•	Deny refund
+	•	Freeze account
+	•	Escalate to finance or fraud review
+ 
+⸻
+ 
+4. System Role in PoH Intelligence
+The Revenue Protection Engine sits at the intersection of:
+	•	Trust Intelligence
+	•	Fraud Intelligence
+	•	Traffic Intelligence
+	•	Human Intelligence
+	•	Billing operations
+	•	Finance controls
+	•	Customer support workflows
+It protects revenue across the full lifecycle:
+	•	Acquisition
+	•	Signup
+	•	Trial
+	•	Activation
+	•	Purchase
+	•	Renewal
+	•	Refund
+	•	Chargeback
+	•	Retention
+	•	Recovery
+ 
+⸻
+ 
+5. Architecture Overview
+The engine is organized into modular subsystems.
+5.1 Signal Collection Layer
+Collects raw operational, transactional, behavioral, identity, and billing data.
+5.2 Normalization Layer
+Standardizes event formats, monetary values, currencies, payment outcomes, and lifecycle states.
+5.3 Intelligence Modules
+Each module specializes in one revenue risk domain:
+	•	Billing Intelligence
+	•	Transaction Intelligence
+	•	Chargeback Intelligence
+	•	Refund Intelligence
+	•	Promo Abuse Intelligence
+	•	Subscription Intelligence
+	•	Retention Intelligence
+	•	Account Risk Intelligence
+	•	Behavioral Revenue Intelligence
+	•	Graph Revenue Intelligence
+5.4 Scoring Orchestration Layer
+Combines module outputs into composite revenue protection scores.
+5.5 Decision Layer
+Transforms risk into operational actions.
+5.6 Feedback and Learning Layer
+Learns from disputes, reversals, reviews, cancellations, and collections outcomes.
+ 
+⸻
+ 
+6. Intelligence Domains
+6.1 Transaction Intelligence
+Analyzes individual purchases, payment attempts, and billing events.
+Signals
+	•	Transaction amount
+	•	Currency
+	•	Payment method
+	•	Payment outcome
+	•	Authorization status
+	•	AVS/CVV results
+	•	Velocity patterns
+	•	Device and IP consistency
+	•	Billing and shipping match quality
+	•	Historical transaction success/failure
+	•	First-time vs returning payer
+Outputs
+	•	Transaction Risk Score
+	•	Payment Trust Score
+	•	Authorization Confidence
+	•	Transaction Fraud Score
+Red flags
+	•	High-value first order
+	•	Repeated retries across cards
+	•	Mismatch between billing identity and behavior
+	•	Unusual purchase speed
+	•	Suspicious payment instrument patterns
+	•	Multiple failed authorization attempts
+ 
+⸻
+ 
+6.2 Chargeback Intelligence
+Predicts dispute and chargeback risk before settlement.
+Signals
+	•	Merchant category
+	•	Product type
+	•	Delivery method
+	•	Customer history
+	•	Prior disputes
+	•	Payment behavior
+	•	Device and IP history
+	•	Account age
+	•	Customer service interactions
+	•	Refund request timing
+	•	Shipping confirmation state
+Outputs
+	•	Chargeback Risk Score
+	•	Dispute Probability
+	•	Loss Probability
+	•	Post-Sale Risk Score
+Red flags
+	•	Very short time between purchase and refund demand
+	•	Unusual descriptor confusion risk
+	•	Frequent disputes by same identity cluster
+	•	High-risk products or regions
+	•	Repeated “item not received” patterns
+	•	Chargeback-friendly behavioral patterns
+ 
+⸻
+ 
+6.3 Refund Abuse Intelligence
+Detects customers or entities abusing return or refund processes.
+Signals
+	•	Refund request frequency
+	•	Refund timing relative to purchase
+	•	Refund reason categories
+	•	Partial refund patterns
+	•	Return shipping history
+	•	Item condition claims
+	•	Support interaction patterns
+	•	Purchase-to-refund ratio
+	•	SKU-specific abuse history
+	•	Identity and device reuse
+Outputs
+	•	Refund Abuse Score
+	•	Return Abuse Score
+	•	Recovery Risk Score
+Red flags
+	•	Repeated refund requests shortly after purchase
+	•	Multiple refunded orders across the same cluster
+	•	Suspicious reason repetition
+	•	High-value item returns with no evidence
+	•	Coordinated refund patterns across accounts
+ 
+⸻
+ 
+6.4 Promo Abuse Intelligence
+Detects abuse of trials, coupons, referral credits, free credits, discounts, and promotional offers.
+Signals
+	•	Coupon usage history
+	•	Trial creation frequency
+	•	Referral code reuse
+	•	Multi-account linkage
+	•	Disposable contact methods
+	•	IP/device clusters
+	•	Benefit redemption timing
+	•	Promo stacking attempts
+	•	Geo patterns
+	•	Payment instrument reuse
+Outputs
+	•	Promo Abuse Score
+	•	Trial Abuse Score
+	•	Incentive Abuse Score
+	•	Referral Abuse Score
+Red flags
+	•	Many trials from one device
+	•	Repeated use of the same promotion source
+	•	Fake or recycled identities
+	•	Rapid benefit harvesting
+	•	Multiple accounts sharing promo infrastructure
+ 
+⸻
+ 
+6.5 Subscription Intelligence
+Monitors recurring billing health and recurring loss risk.
+Signals
+	•	Subscription age
+	•	Plan changes
+	•	Failed billing attempts
+	•	Cancellation behavior
+	•	Pause/resume patterns
+	•	Renewal timing
+	•	Card update frequency
+	•	Dunning outcomes
+	•	Chargeback history
+	•	Support interactions before cancel
+Outputs
+	•	Subscription Risk Score
+	•	Renewal Risk Score
+	•	Churn Risk Score
+	•	Failed Payment Risk Score
+Red flags
+	•	Frequent payment retries with changing cards
+	•	Immediate cancellation after activation
+	•	Multiple subscriptions across same cluster
+	•	Dunning avoidance patterns
+	•	Subscription abuse tied to trial exploitation
+ 
+⸻
+ 
+6.6 Billing Intelligence
+Evaluates billing operation integrity and payment lifecycle anomalies.
+Signals
+	•	Invoice patterns
+	•	Failed payment frequency
+	•	Manual adjustments
+	•	Credit issuance
+	•	Tax and currency anomalies
+	•	Account balance behavior
+	•	Write-off rates
+	•	Support-driven credits
+	•	Payment processor failures
+	•	Reconciliation mismatches
+Outputs
+	•	Billing Integrity Score
+	•	Billing Leakage Score
+	•	Collection Risk Score
+Red flags
+	•	Unusual manual credits
+	•	Repeated billing support interventions
+	•	Invoice manipulation
+	•	Missing or inconsistent settlement records
+	•	Revenue not matching delivered service
+ 
+⸻
+ 
+6.7 Retention Intelligence
+Predicts whether revenue will remain durable or deteriorate.
+Signals
+	•	Product engagement
+	•	Feature adoption
+	•	Session frequency
+	•	Usage depth
+	•	Account health
+	•	Support sentiment
+	•	Complaints
+	•	Renewal behavior
+	•	Sentiment and NPS patterns
+	•	Churn precursors
+Outputs
+	•	Retention Risk Score
+	•	Revenue Durability Score
+	•	Expansion Likelihood
+	•	Churn Probability
+Red flags
+	•	Rapid activity decay after purchase
+	•	Negative support patterns
+	•	Low product value realization
+	•	Early downgrade behavior
+	•	High refund/cancel correlation
+ 
+⸻
+ 
+6.8 Account Risk Intelligence
+Analyzes whether an account is likely to cause financial loss.
+Signals
+	•	Account age
+	•	Verification level
+	•	Contact method quality
+	•	Identity consistency
+	•	Access patterns
+	•	Device history
+	•	Session risk
+	•	Multi-account linkages
+	•	Recovery events
+	•	Privilege changes
+Outputs
+	•	Account Revenue Risk Score
+	•	ATO Loss Risk Score
+	•	Account Abuse Risk Score
+Red flags
+	•	New accounts making costly transactions
+	•	Recovery attempts followed by spend spikes
+	•	Shared infrastructure across many accounts
+	•	High-value abuse initiated from suspicious sessions
+ 
+⸻
+ 
+6.9 Behavioral Revenue Intelligence
+Measures whether behavior around monetization is human, stable, and expected.
+Signals
+	•	Form completion timing
+	•	Click cadence
+	•	Purchase path consistency
+	•	Coupon entry behavior
+	•	Checkout hesitation
+	•	Mouse and keyboard dynamics
+	•	Support conversation timing
+	•	Refund request timing
+	•	Session repetitions
+	•	Navigation anomalies
+Outputs
+	•	Behavioral Trust Score
+	•	Revenue Intent Score
+	•	Transaction Authenticity Score
+Red flags
+	•	Script-like checkout behavior
+	•	Mass checkout speed
+	•	Rapid form-filling without review
+	•	Identical flow across many accounts
+	•	Support interactions timed to exploit policies
+ 
+⸻
+ 
+6.10 Graph Revenue Intelligence
+Builds a graph of shared revenue risk across entities.
+Node types
+	•	Account
+	•	Device
+	•	IP
+	•	Email
+	•	Phone
+	•	Payment instrument
+	•	Shipping address
+	•	Billing address
+	•	Subscription
+	•	Transaction
+	•	Refund
+	•	Coupon code
+	•	Support case
+Edge types
+	•	Uses
+	•	Shares
+	•	Refers
+	•	Paid_by
+	•	Refunded_to
+	•	Disputed_by
+	•	Associated_with
+	•	Created_from
+Outputs
+	•	Cluster Risk Score
+	•	Shared Instrument Score
+	•	Fraud Ring Revenue Score
+	•	Relationship Loss Score
+Red flags
+	•	Many accounts tied to one card
+	•	Shared refund destinations
+	•	Shared shipping and billing reuse
+	•	Dense clusters of risky accounts
+	•	Repeated benefit harvesting across a graph
+ 
+⸻
+ 
+7. Revenue Risk Categories
+The engine should classify risk into one or more of the following categories:
+	•	Chargeback risk
+	•	Refund abuse
+	•	Promo abuse
+	•	Subscription abuse
+	•	Billing leakage
+	•	Revenue leakage
+	•	Payment fraud
+	•	Account takeover loss
+	•	Dunning failure
+	•	Customer churn risk
+	•	Support abuse
+	•	Fulfillment abuse
+ 
+⸻
+ 
+8. Scoring Model
+8.1 Suggested weighting model
+A starting composite weighting structure:
+	•	Transaction Intelligence: 20%
+	•	Chargeback Intelligence: 15%
+	•	Refund Abuse Intelligence: 10%
+	•	Promo Abuse Intelligence: 10%
+	•	Subscription Intelligence: 10%
+	•	Billing Intelligence: 10%
+	•	Retention Intelligence: 10%
+	•	Account Risk Intelligence: 10%
+	•	Behavioral Revenue Intelligence: 5%
+	•	Graph Revenue Intelligence: 10%
+Weights should be tenant-configurable and product-specific.
+8.2 Composite formula
+Revenue Protection Score =
+(Transaction * 0.20) +
+(Chargeback * 0.15) +
+(Refund * 0.10) +
+(Promo * 0.10) +
+(Subscription * 0.10) +
+(Billing * 0.10) +
+(Retention * 0.10) +
+(Account * 0.10) +
+(Behavior * 0.05) +
+(Graph * 0.10)
+8.3 Confidence adjustment
+Final score should be adjusted by confidence and signal completeness.
+	•	High confidence: no penalty
+	•	Medium confidence: slight downward adjustment
+	•	Low confidence: conservative risk bias and review preference
+ 
+⸻
+ 
+9. Decision Engine
+The decision engine maps revenue risk into operational action.
+9.1 Action outcomes
+	•	Approve
+	•	Approve and monitor
+	•	Delay fulfillment
+	•	Step-up verification
+	•	Hold refund
+	•	Limit benefit issuance
+	•	Require review
+	•	Freeze account
+	•	Deny refund
+	•	Block transaction
+	•	Escalate to finance or fraud operations
+9.2 Example policy bands
+	•	850–1000: Allow
+	•	700–849: Allow and monitor
+	•	550–699: Step-up or limit benefits
+	•	400–549: Hold or review
+	•	Below 400: Block or freeze depending on severity
+9.3 Decision modifiers
+	•	High-value order
+	•	New account
+	•	First transaction
+	•	Sensitive product
+	•	High-risk geography
+	•	Payment method risk
+	•	Known abuse cluster
+	•	Prior refund abuse
+	•	Enterprise policy settings
+ 
+⸻
+ 
+10. Explainability Requirements
+Every score must explain why revenue is at risk.
+Required reason codes
+	•	high_chargeback_risk
+	•	refund_velocity
+	•	promo_reuse
+	•	subscription_instability
+	•	billing_anomaly
+	•	payment_mismatch
+	•	cluster_linkage
+	•	account_takeover_pattern
+	•	support_abuse_pattern
+	•	low_revenue_confidence
+Example explanation payload
+{
+  "revenueProtectionScore": 418,
+  "chargebackRiskScore": 76,
+  "refundAbuseScore": 62,
+  "promoAbuseScore": 81,
+  "confidence": 91,
+  "riskTier": "high",
+  "decision": "hold_for_review",
+  "topPositiveSignals": [
+    "consistent_device_history",
+    "verified_payment_method"
+  ],
+  "topNegativeSignals": [
+    "multiple_trial_accounts",
+    "shared_ip_cluster",
+    "refund_velocity_above_threshold"
+  ]
+}
+ 
+⸻
+ 
+11. Data Model
+11.1 Revenue Entity
+Represents a customer, account, tenant, or relationship generating or consuming revenue.
+Fields:
+	•	revenue_entity_id
+	•	entity_type
+	•	tenant_id
+	•	created_at
+	•	status
+	•	risk_profile_id
+11.2 Transaction
+Represents a monetized event.
+Fields:
+	•	transaction_id
+	•	revenue_entity_id
+	•	amount
+	•	currency
+	•	status
+	•	payment_method_type
+	•	processor_id
+	•	created_at
+11.3 Subscription
+Represents recurring revenue contract.
+Fields:
+	•	subscription_id
+	•	revenue_entity_id
+	•	plan_id
+	•	billing_cycle
+	•	status
+	•	renewal_date
+	•	churn_risk_score
+11.4 Refund Case
+Represents a refund or return event.
+Fields:
+	•	refund_case_id
+	•	transaction_id
+	•	reason_code
+	•	amount
+	•	status
+	•	review_result
+11.5 Revenue Risk Profile
+Represents aggregated risk over time.
+Fields:
+	•	profile_id
+	•	entity_id
+	•	revenue_protection_score
+	•	chargeback_risk_score
+	•	refund_abuse_score
+	•	promo_abuse_score
+	•	updated_at
+ 
+⸻
+ 
+12. Event Schema
+All events should include:
+	•	tenant_id
+	•	entity_id
+	•	session_id
+	•	transaction_id
+	•	event_type
+	•	timestamp
+	•	source
+	•	raw_payload
+	•	normalized_payload
+	•	module_outputs
+	•	final_decision
+	•	model_version
+	•	policy_version
+Examples of event types:
+	•	purchase_attempt
+	•	renewal_attempt
+	•	refund_request
+	•	chargeback_notice
+	•	promo_redemption
+	•	trial_start
+	•	trial_conversion
+	•	subscription_cancellation
+	•	support_credit_request
+	•	payment_retry
+ 
+⸻
+ 
+13. API Specification
+13.1 Score Revenue Risk
+POST /v1/revenue/score
+Request example:
+{
+  "tenantId": "tenant_123",
+  "entityId": "user_456",
+  "transactionId": "txn_789",
+  "eventType": "purchase_attempt",
+  "signals": {
+    "transaction": {},
+    "identity": {},
+    "device": {},
+    "network": {},
+    "behavior": {},
+    "billing": {},
+    "graph": {}
+  }
+}
+Response example:
+{
+  "revenueProtectionScore": 418,
+  "chargebackRiskScore": 76,
+  "refundAbuseScore": 62,
+  "promoAbuseScore": 81,
+  "confidence": 91,
+  "riskTier": "high",
+  "decision": "hold_for_review",
+  "reasonCodes": [
+    "high_chargeback_risk",
+    "promo_reuse",
+    "cluster_linkage"
+  ]
+}
+13.2 Explain Revenue Score
+GET /v1/revenue/explain/{score_id}
+Returns:
+	•	feature contributions
+	•	risk modules
+	•	reason codes
+	•	policy triggers
+	•	thresholds used
+13.3 Feedback Endpoint
+POST /v1/revenue/feedback
+Used for:
+	•	chargeback confirmed
+	•	refund approved
+	•	refund rejected
+	•	promo abuse confirmed
+	•	payment legit
+	•	manual review complete
+	•	collection success
+	•	bad debt write-off
+ 
+⸻
+ 
+14. Performance Requirements
+Latency targets
+	•	P50: under 50 ms
+	•	P95: under 100 ms
+	•	P99: under 250 ms
+Throughput targets
+	•	High-volume checkout support
+	•	Recurring billing support
+	•	Refund and dispute event support
+	•	Batch backfill and replay support
+Availability targets
+	•	99.99% uptime for scoring API
+	•	Graceful degradation for non-critical enrichment providers
+ 
+⸻
+ 
+15. Reliability and Fallback Behavior
+When a signal source is unavailable, the engine should:
+	•	Continue scoring with available signals
+	•	Use cached reputation data
+	•	Degrade to rule-based risk estimation
+	•	Increase confidence penalties
+	•	Bias toward review for critical events
+Fallback modes:
+	•	Partial scoring
+	•	Rule-only mode
+	•	Cached risk mode
+	•	Delayed recomputation
+	•	Manual review mode
+ 
+⸻
+ 
+16. Security Requirements
+Controls
+	•	Encryption in transit and at rest
+	•	Tenant isolation
+	•	Strong authentication and authorization
+	•	Audit logging
+	•	HMAC or signed events where appropriate
+	•	Rate limiting
+	•	Replay protection
+	•	Sensitive data minimization
+Privacy controls
+	•	Hash or tokenize sensitive identifiers
+	•	Apply retention policies
+	•	Support deletion and export requests
+	•	Separate raw financial data from derived features
+	•	Restrict access by role and purpose
+ 
+⸻
+ 
+17. Monitoring and Observability
+Dashboards
+	•	Revenue Protection Score distribution
+	•	Chargeback risk by cohort
+	•	Refund abuse by product line
+	•	Promo abuse by campaign
+	•	Subscription risk by plan
+	•	Payment failure rate
+	•	Manual review outcomes
+	•	Loss prevented
+	•	False positive rate
+	•	Feature drift and model drift
+Alerts
+	•	Sudden dispute spike
+	•	Refund abuse burst
+	•	Promo abuse cluster
+	•	High-value fraud surge
+	•	Billing leakage anomaly
+	•	Revenue confidence drop
+	•	Risk model instability
+ 
+⸻
+ 
+18. Governance and Versioning
+Track every deployment of:
+	•	signal schema
+	•	feature definitions
+	•	model version
+	•	rules version
+	•	policy thresholds
+	•	reason codes
+	•	feedback labels
+Each score should retain:
+	•	score_id
+	•	model_version
+	•	policy_version
+	•	feature_version
+	•	created_at
+	•	input snapshot
+	•	output snapshot
+ 
+⸻
+ 
+19. Recommended Output Contract
+{
+  "revenueProtectionScore": 0,
+  "revenueRiskScore": 0,
+  "chargebackRiskScore": 0,
+  "refundAbuseScore": 0,
+  "promoAbuseScore": 0,
+  "confidence": 0,
+  "riskTier": "low",
+  "decision": "approve",
+  "moduleScores": {
+    "transaction": 0,
+    "chargeback": 0,
+    "refund": 0,
+    "promo": 0,
+    "subscription": 0,
+    "billing": 0,
+    "retention": 0,
+    "account": 0,
+    "behavior": 0,
+    "graph": 0
+  },
+  "reasonCodes": [],
+  "topSignals": {
+    "positive": [],
+    "negative": []
+  },
+  "modelVersion": "revenue-1.0.0"
+}
+ 
+⸻
+ 
+20. Positioning Statement
+Revenue Protection Engine is the financial trust layer of PoH Intelligence, converting transaction, account, billing, behavior, and graph signals into real-time decisions that protect revenue, reduce loss, and improve monetization durability.
+If you want, I can turn this into a  technical PRD, a  full EDD, or a  full implementation backlog next.
