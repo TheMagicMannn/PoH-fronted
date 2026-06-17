@@ -127,6 +127,84 @@ router.get("/overview", requireAuth, async (req, res) => {
     const invalidConv = convs.filter((c) => c.classification !== "trusted").length;
     const suppressed = convs.filter((c) => ["suppressed", "blocked"].includes(c.status)).length;
 
+    // ---------- Extended analytics ----------
+
+    // Geographic breakdown (top 15 by session count)
+    type GeoEntry = { total: number; bad: number };
+    const geoMap: Record<string, GeoEntry> = {};
+    for (const s of sessions) {
+      const key = s.country || "Unknown";
+      geoMap[key] ??= { total: 0, bad: 0 };
+      geoMap[key].total++;
+      if (s.classification !== "trusted") geoMap[key].bad++;
+    }
+    const byCountry = Object.entries(geoMap)
+      .sort(([, a], [, b]) => b.total - a.total)
+      .slice(0, 15)
+      .map(([country, v]) => ({
+        country,
+        total: v.total,
+        bad: v.bad,
+        fraud_rate: v.total ? Math.round((v.bad / v.total) * 1000) / 10 : 0,
+      }));
+
+    // Device / Browser / OS breakdown
+    function classBreakdown(key: keyof typeof sessions[0]) {
+      type Entry = { total: number; bad: number };
+      const map: Record<string, Entry> = {};
+      for (const s of sessions) {
+        const k = (s[key] as string | null | undefined) || "Unknown";
+        map[k] ??= { total: 0, bad: 0 };
+        map[k].total++;
+        if (s.classification !== "trusted") map[k].bad++;
+      }
+      return Object.entries(map)
+        .sort(([, a], [, b]) => b.total - a.total)
+        .slice(0, 8)
+        .map(([name, v]) => ({
+          name,
+          total: v.total,
+          bad: v.bad,
+          fraud_rate: v.total ? Math.round((v.bad / v.total) * 1000) / 10 : 0,
+        }));
+    }
+    const byDevice = classBreakdown("deviceType");
+    const byBrowser = classBreakdown("browser");
+    const byOs = classBreakdown("os");
+
+    // Hourly attack pattern (24 buckets, UTC hour)
+    type HourEntry = { trusted: number; suspicious: number; fraudulent: number };
+    const hourMap: Record<number, HourEntry> = {};
+    for (let h = 0; h < 24; h++) hourMap[h] = { trusted: 0, suspicious: 0, fraudulent: 0 };
+    for (const s of sessions) {
+      const h = s.startedAt.getUTCHours();
+      const cls = s.classification as keyof HourEntry;
+      if (hourMap[h] && cls in hourMap[h]) hourMap[h][cls]++;
+    }
+    const hourly = Array.from({ length: 24 }, (_, h) => ({
+      hour: h,
+      label: `${String(h).padStart(2, "0")}:00`,
+      ...hourMap[h]!,
+      total: (hourMap[h]?.trusted ?? 0) + (hourMap[h]?.suspicious ?? 0) + (hourMap[h]?.fraudulent ?? 0),
+    }));
+
+    // Score distribution (5 buckets: 0-20, 20-40, 40-60, 60-80, 80-100)
+    const buckets = [
+      { range: "0–20", min: 0, max: 20 },
+      { range: "20–40", min: 20, max: 40 },
+      { range: "40–60", min: 40, max: 60 },
+      { range: "60–80", min: 60, max: 80 },
+      { range: "80–100", min: 80, max: 100 },
+    ];
+    const scoreDist = buckets.map(({ range: r, min, max }) => {
+      const items = sessions.filter((s) => s.fraudScore >= min && (max === 100 ? s.fraudScore <= max : s.fraudScore < max));
+      return { range: r, count: items.length, min, max };
+    });
+
+    // Avg trust score & confidence
+    const avgTrustScore = total > 0 ? Math.round(sessions.reduce((acc, s) => acc + (s.trustScore ?? 0), 0) / total) : 0;
+    const avgConfidence = total > 0 ? Math.round((sessions.reduce((acc, s) => acc + (s.confidence ?? 0), 0) / total) * 100) : 0;
+
     res.json({
       range,
       kpis: {
@@ -141,6 +219,8 @@ router.get("/overview", requireAuth, async (req, res) => {
         invalid_conversions: invalidConv,
         invalid_conversion_rate: totalConv ? Math.round((invalidConv / totalConv) * 1000) / 10 : 0,
         suppressed_conversions: suppressed,
+        avg_trust_score: avgTrustScore,
+        avg_confidence: avgConfidence,
       },
       distribution: [
         { name: "trusted", value: byCls["trusted"] ?? 0 },
@@ -150,6 +230,12 @@ router.get("/overview", requireAuth, async (req, res) => {
       trend,
       by_source: bySource,
       top_reasons: topReasons,
+      by_country: byCountry,
+      by_device: byDevice,
+      by_browser: byBrowser,
+      by_os: byOs,
+      hourly,
+      score_distribution: scoreDist,
     });
   } catch (err) {
     res.status(500).json({ detail: "Failed to load overview" });
