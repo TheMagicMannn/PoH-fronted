@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSite } from "@/context/SiteContext";
 import { fetcher } from "@/lib/api";
 import { Card, Spinner, EmptyState } from "@/components/common/Card";
 import { RangeSelect, Select, SearchInput } from "@/components/common/Controls";
@@ -18,12 +19,14 @@ export default function Sessions() {
   const [filters, setFilters] = useState({ range: "30d", classification: "", source: "", device: "", action: "", search: "" });
   const [page, setPage] = useState(1);
   const [activeId, setActiveId] = useState(null);
+  const { siteId } = useSite();
   const pageSize = 20;
 
   const params = new URLSearchParams({ range: filters.range, page, page_size: pageSize });
   ["classification", "source", "device", "action", "search"].forEach((k) => filters[k] && params.set(k, filters[k]));
+  if (siteId) params.set("site_id", siteId);
 
-  const { data, isLoading } = useQuery({ queryKey: ["sessions", filters, page], queryFn: () => fetcher(`/sessions?${params}`) });
+  const { data, isLoading } = useQuery({ queryKey: ["sessions", filters, page, siteId], queryFn: () => fetcher(`/sessions?${params}`) });
 
   const set = (k) => (v) => { setFilters({ ...filters, [k]: v }); setPage(1); };
   const items = data?.items || [];

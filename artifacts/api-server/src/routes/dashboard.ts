@@ -55,16 +55,25 @@ router.get("/overview", requireAuth, async (req, res) => {
     const wid = wsId(req);
     const range = (req.query["range"] as string) ?? "7d";
     const cut = cutoff(range);
+    const siteFilter = req.query["site_id"] as string | undefined;
 
     const sessions = await db
       .select()
       .from(sessionsTable)
-      .where(and(eq(sessionsTable.workspaceId, wid), gte(sessionsTable.startedAt, cut)));
+      .where(and(
+        eq(sessionsTable.workspaceId, wid),
+        gte(sessionsTable.startedAt, cut),
+        siteFilter ? eq(sessionsTable.siteId, siteFilter) : undefined,
+      ));
 
     const convs = await db
       .select()
       .from(conversionsTable)
-      .where(and(eq(conversionsTable.workspaceId, wid), gte(conversionsTable.createdAt, cut)));
+      .where(and(
+        eq(conversionsTable.workspaceId, wid),
+        gte(conversionsTable.createdAt, cut),
+        siteFilter ? eq(conversionsTable.siteId, siteFilter) : undefined,
+      ));
 
     const total = sessions.length;
     const byCls: Record<string, number> = {};
@@ -154,11 +163,16 @@ router.get("/sessions", requireAuth, async (req, res) => {
     const range = (req.query["range"] as string) ?? "30d";
     const page = Math.max(1, Number(req.query["page"]) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(req.query["page_size"]) || 25));
+    const siteFilter = req.query["site_id"] as string | undefined;
 
     const sessions = await db
       .select()
       .from(sessionsTable)
-      .where(and(eq(sessionsTable.workspaceId, wid), gte(sessionsTable.startedAt, cutoff(range))))
+      .where(and(
+        eq(sessionsTable.workspaceId, wid),
+        gte(sessionsTable.startedAt, cutoff(range)),
+        siteFilter ? eq(sessionsTable.siteId, siteFilter) : undefined,
+      ))
       .orderBy(desc(sessionsTable.startedAt));
 
     let items = sessions;
@@ -230,11 +244,16 @@ router.get("/conversions", requireAuth, async (req, res) => {
     const range = (req.query["range"] as string) ?? "30d";
     const page = Math.max(1, Number(req.query["page"]) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(req.query["page_size"]) || 25));
+    const siteFilter = req.query["site_id"] as string | undefined;
 
     const convs = await db
       .select()
       .from(conversionsTable)
-      .where(and(eq(conversionsTable.workspaceId, wid), gte(conversionsTable.createdAt, cutoff(range))))
+      .where(and(
+        eq(conversionsTable.workspaceId, wid),
+        gte(conversionsTable.createdAt, cutoff(range)),
+        siteFilter ? eq(conversionsTable.siteId, siteFilter) : undefined,
+      ))
       .orderBy(desc(conversionsTable.createdAt));
 
     let items = convs;
@@ -278,10 +297,15 @@ router.get("/campaigns", requireAuth, async (req, res) => {
   try {
     const wid = wsId(req);
     const range = (req.query["range"] as string) ?? "30d";
+    const siteFilter = req.query["site_id"] as string | undefined;
     const sessions = await db
       .select()
       .from(sessionsTable)
-      .where(and(eq(sessionsTable.workspaceId, wid), gte(sessionsTable.startedAt, cutoff(range))));
+      .where(and(
+        eq(sessionsTable.workspaceId, wid),
+        gte(sessionsTable.startedAt, cutoff(range)),
+        siteFilter ? eq(sessionsTable.siteId, siteFilter) : undefined,
+      ));
 
     const agg: Record<string, { total: number; trusted: number; suspicious: number; fraudulent: number; spend: number; wasted: number }> = {};
     for (const s of sessions) {
@@ -738,7 +762,7 @@ router.post("/demo/seed", requireRole("admin"), async (req, res) => {
       if (isSuspicious) reasons.push("vpn_usage");
 
       sessionInserts.push({
-        id: randomUUID(), workspaceId: wid, sessionId: `sess_${randomUUID().slice(0, 8)}`,
+        id: randomUUID(), workspaceId: wid, siteId: site.id, sessionId: `sess_${randomUUID().slice(0, 8)}`,
         fingerprintHash: `fp_${Math.random().toString(36).slice(2, 10)}`,
         ip: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
         country: countries[Math.floor(Math.random() * countries.length)]!,
@@ -754,7 +778,7 @@ router.post("/demo/seed", requireRole("admin"), async (req, res) => {
 
       if (Math.random() < 0.2) {
         conversionInserts.push({
-          id: randomUUID(), workspaceId: wid,
+          id: randomUUID(), workspaceId: wid, siteId: site.id,
           sessionId: sessionInserts[sessionInserts.length - 1]!.sessionId,
           type: Math.random() < 0.5 ? "lead" : "signup",
           status: isFraud ? "suppressed" : isSuspicious ? "flagged" : "observed",
@@ -801,6 +825,7 @@ router.post("/collect", async (req, res) => {
       .limit(1);
 
     if (!site) { res.status(401).json({ detail: "Invalid SDK key" }); return; }
+    const siteId = site.id;
 
     const sig = body.signals ?? {};
     const beh = body.behavior ?? {};
@@ -838,6 +863,7 @@ router.post("/collect", async (req, res) => {
     await db.insert(sessionsTable).values({
       id: randomUUID(),
       workspaceId: site.workspaceId,
+      siteId,
       sessionId,
       fingerprintHash: body.fingerprint ?? null,
       source: String(utm.source ?? "direct"),
@@ -861,6 +887,7 @@ router.post("/collect", async (req, res) => {
       await db.insert(conversionsTable).values({
         id: randomUUID(),
         workspaceId: site.workspaceId,
+        siteId,
         sessionId,
         type: body.conversion.type ?? "lead",
         status: classification === "fraudulent" ? "suppressed" : classification === "suspicious" ? "flagged" : "observed",

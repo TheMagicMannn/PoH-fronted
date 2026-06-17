@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 export const conversionsTable = pgTable("conversions", {
   id: text("id").primaryKey(),
   workspaceId: text("workspace_id").notNull(),
+  siteId: text("site_id"),
   sessionId: text("session_id"),
   type: text("type").notNull().default("lead"),
   status: text("status").notNull().default("observed"),

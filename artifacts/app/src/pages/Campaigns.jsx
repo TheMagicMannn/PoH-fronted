@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSite } from "@/context/SiteContext";
 import { fetcher } from "@/lib/api";
 import { Card, Spinner, EmptyState, KpiCard } from "@/components/common/Card";
 import { RangeSelect } from "@/components/common/Controls";
@@ -26,7 +27,9 @@ function QualityBar({ trusted, suspicious, fraudulent, total }) {
 
 export default function Campaigns() {
   const [range, setRange] = useState("30d");
-  const { data, isLoading } = useQuery({ queryKey: ["campaigns", range], queryFn: () => fetcher(`/campaigns?range=${range}`) });
+  const { siteId } = useSite();
+  const siteParam = siteId ? `&site_id=${siteId}` : "";
+  const { data, isLoading } = useQuery({ queryKey: ["campaigns", range, siteId], queryFn: () => fetcher(`/campaigns?range=${range}${siteParam}`) });
   const rows = data?.campaigns || [];
   const totalSpend = rows.reduce((s, r) => s + r.spend, 0);
   const totalWasted = rows.reduce((s, r) => s + r.wasted, 0);

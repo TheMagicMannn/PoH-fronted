@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSite } from "@/context/SiteContext";
 import { fetcher } from "@/lib/api";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
@@ -15,7 +16,9 @@ const COLORS = { trusted: "#34D399", suspicious: "#FBBF24", fraudulent: "#F87171
 
 export default function Overview() {
   const [range, setRange] = useState("7d");
-  const { data, isLoading } = useQuery({ queryKey: ["overview", range], queryFn: () => fetcher(`/overview?range=${range}`) });
+  const { siteId } = useSite();
+  const siteParam = siteId ? `&site_id=${siteId}` : "";
+  const { data, isLoading } = useQuery({ queryKey: ["overview", range, siteId], queryFn: () => fetcher(`/overview?range=${range}${siteParam}`) });
 
   if (isLoading || !data) return <Spinner />;
   const k = data.kpis;

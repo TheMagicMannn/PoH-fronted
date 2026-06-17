@@ -19,6 +19,7 @@ export const sessionsTable = pgTable("sessions", {
   os: text("os"),
   browser: text("browser"),
   ua: text("ua"),
+  siteId: text("site_id"),
   landingPage: text("landing_page"),
   classification: text("classification").notNull().default("trusted"),
   fraudScore: real("fraud_score").notNull().default(0),
