@@ -1,2 +1,3 @@
 - [Vite JSX in .js files](vite-jsx-js-files.md) — .js files with JSX need special vite.config.ts treatment to parse correctly
 - [SDK package location](sdk-package.md) — client SDK for PoH engines lives at lib/sdk (@workspace/sdk), covers Human/Traffic/Revenue/Analytics engines
+- [Browser SDK build](browser-sdk-build.md) — poh.ts uses DOM globals, excluded from Node.js tsconfig, has own tsconfig with DOM lib, built to dist/poh.js

@@ -124,3 +124,25 @@ buildAll().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
+async function buildBrowserSdk() {
+  const distDir = path.resolve(artifactDir, "dist");
+  await esbuild({
+    entryPoints: [path.resolve(artifactDir, "src/browser-sdk/poh.ts")],
+    platform: "browser",
+    bundle: true,
+    format: "iife",
+    globalName: "_pohSdk",
+    minify: true,
+    outfile: path.resolve(distDir, "poh.js"),
+    logLevel: "info",
+    define: {
+      "process.env.NODE_ENV": '"production"',
+    },
+  });
+}
+
+buildBrowserSdk().catch((err) => {
+  console.error("[browser-sdk]", err);
+  process.exit(1);
+});

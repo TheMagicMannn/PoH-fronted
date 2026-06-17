@@ -8,6 +8,7 @@
     "types": ["node"]
   },
   "include": ["src"],
+  "exclude": ["src/browser-sdk"],
   "references": [
     {
       "path": "../../lib/db"

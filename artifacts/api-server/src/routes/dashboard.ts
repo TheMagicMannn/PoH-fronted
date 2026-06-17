@@ -676,14 +676,25 @@ router.delete("/workspace/members/:mid", requireRole("admin"), async (req, res) 
 });
 
 // ---------- Sites ----------
+function getPublicApiBase(req: import("express").Request): string {
+  const domains = process.env["REPLIT_DOMAINS"];
+  if (domains) {
+    const primary = domains.split(",")[0]!.trim();
+    return `https://${primary}`;
+  }
+  const host = req.get("host") ?? "localhost:8080";
+  const proto = req.protocol ?? "http";
+  return `${proto}://${host}`;
+}
+
 router.get("/sites", requireAuth, async (req, res) => {
   try {
     const sites = await db.select().from(sitesTable).where(eq(sitesTable.workspaceId, wsId(req)));
-    const backendUrl = process.env["FRONTEND_URL"] ?? "";
+    const base = getPublicApiBase(req);
     res.json({
       sites: sites.map((s) => ({
         ...s,
-        snippet: `<script async src="${backendUrl}/api/poh.js" data-poh-key="${s.sdkKey}"></script>`,
+        snippet: `<script async src="${base}/api/poh.js" data-poh-key="${s.sdkKey}"></script>`,
       })),
     });
   } catch {
@@ -766,7 +777,107 @@ router.post("/demo/seed", requireRole("admin"), async (req, res) => {
 
 // ---------- Collect (SDK ingestion) ----------
 router.post("/collect", async (req, res) => {
-  res.json({ ok: true, received: true });
+  try {
+    const body = req.body as {
+      sdk_key?: string;
+      session_id?: string;
+      fingerprint?: string;
+      page?: string;
+      referrer?: string;
+      utm?: { source?: string; medium?: string; campaign?: string; ad_set?: string };
+      signals?: Record<string, unknown>;
+      behavior?: Record<string, unknown>;
+      event_type?: string;
+      conversion?: { type?: string; value?: number; currency?: string };
+    };
+
+    const sdkKey = body.sdk_key;
+    if (!sdkKey) { res.status(400).json({ detail: "sdk_key required" }); return; }
+
+    const [site] = await db
+      .select({ id: sitesTable.id, workspaceId: sitesTable.workspaceId })
+      .from(sitesTable)
+      .where(eq(sitesTable.sdkKey, sdkKey))
+      .limit(1);
+
+    if (!site) { res.status(401).json({ detail: "Invalid SDK key" }); return; }
+
+    const sig = body.signals ?? {};
+    const beh = body.behavior ?? {};
+    const utm = body.utm ?? {};
+
+    const headlessScore = Number(sig["headless_score"] ?? 0);
+    const webdriver = !!sig["webdriver"];
+    const noPlugins = Number(sig["plugins_count"] ?? 0) === 0;
+    const noLangs = Number(sig["languages_count"] ?? 0) === 0;
+    const interactionDepth = Number(beh["mouse_event_count"] ?? 0) + Number(beh["click_count"] ?? 0);
+
+    const reasonCodes: string[] = [];
+    if (webdriver) reasonCodes.push("browser_automation_detected");
+    if (headlessScore > 30) reasonCodes.push("headless_browser_indicators");
+    if (noPlugins) reasonCodes.push("missing_browser_plugins");
+    if (noLangs) reasonCodes.push("no_language_preferences");
+    if (interactionDepth < 3 && Number(beh["session_duration_ms"] ?? 9999) < 2000) {
+      reasonCodes.push("instant_bounce_timing");
+    }
+
+    const fraudScore =
+      (webdriver ? 60 : 0) +
+      (headlessScore > 30 ? 20 : 0) +
+      (noPlugins ? 10 : 0) +
+      (noLangs ? 5 : 0) +
+      (interactionDepth < 3 ? 5 : 0);
+
+    const classification =
+      fraudScore >= 60 ? "fraudulent" : fraudScore >= 25 ? "suspicious" : "trusted";
+    const trustScore = Math.max(0, 100 - fraudScore);
+    const action = classification === "fraudulent" ? "block" : classification === "suspicious" ? "review" : "observe";
+
+    const sessionId = body.session_id ?? randomUUID();
+
+    await db.insert(sessionsTable).values({
+      id: randomUUID(),
+      workspaceId: site.workspaceId,
+      sessionId,
+      fingerprintHash: body.fingerprint ?? null,
+      source: String(utm.source ?? "direct"),
+      medium: utm.medium ?? null,
+      campaign: utm.campaign ?? null,
+      adSet: utm.ad_set ?? null,
+      landingPage: body.page ?? null,
+      deviceType: sig["is_mobile"] ? "Mobile" : "Desktop",
+      ua: String(sig["user_agent"] ?? ""),
+      timezone: String(sig["timezone"] ?? ""),
+      classification,
+      fraudScore,
+      trustScore,
+      confidence: 0.75,
+      action,
+      reasonCodes,
+      startedAt: new Date(),
+    }).onConflictDoNothing();
+
+    if (body.event_type === "conversion" && body.conversion) {
+      await db.insert(conversionsTable).values({
+        id: randomUUID(),
+        workspaceId: site.workspaceId,
+        sessionId,
+        type: body.conversion.type ?? "lead",
+        status: classification === "fraudulent" ? "suppressed" : classification === "suspicious" ? "flagged" : "observed",
+        classification,
+        value: body.conversion.value ?? 0,
+        source: String(utm.source ?? "direct"),
+      });
+    }
+
+    res.json({
+      ok: true,
+      session_id: sessionId,
+      score: { classification, fraud_score: fraudScore, trust_score: trustScore, action, reason_codes: reasonCodes },
+    });
+  } catch (err) {
+    res.status(500).json({ detail: "Collect failed", error: String(err) });
+  }
 });
 
 // ---------- Meta ----------
