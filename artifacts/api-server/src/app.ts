@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
+import { snakeCaseResponse } from "./lib/serialize.js";
 
 const app: Express = express();
 
@@ -30,6 +31,7 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(snakeCaseResponse);
 
 app.use("/api", router);
 
