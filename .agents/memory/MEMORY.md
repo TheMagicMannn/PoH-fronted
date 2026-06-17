@@ -1,0 +1,1 @@
+- [Vite + JSX .js files](vite-jsx-js-files.md) — .js files with JSX need special vite.config.ts treatment to parse correctly
