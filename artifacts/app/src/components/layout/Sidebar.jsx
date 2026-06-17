@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import {
   SquaresFour, Pulse, Target, Megaphone, ShieldCheck, MagnifyingGlass,
-  PlugsConnected, GearSix, ShieldChevron, SignOut, Code,
+  PlugsConnected, GearSix, ShieldChevron, SignOut, Code, GlobeHemisphereWest,
 } from "@phosphor-icons/react";
 
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
   { to: "/app/rules", label: "Rules & Actions", icon: ShieldCheck },
   { to: "/app/investigations", label: "Investigations", icon: MagnifyingGlass },
   { to: "/app/integrations", label: "Integrations", icon: PlugsConnected },
+  { to: "/app/domains", label: "Domains", icon: GlobeHemisphereWest },
   { to: "/app/settings", label: "Workspace Settings", icon: GearSix },
 ];
 
@@ -67,8 +68,17 @@ export default function Sidebar() {
         >
           <Code size={18} /> Install SDK
         </NavLink>
-        <div className="flex items-center gap-2.5 rounded-md px-3 py-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/8 text-xs font-mono font-semibold text-white">
+        <NavLink
+          to="/app/profile"
+          data-testid="nav-profile"
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-2.5 rounded-md px-3 py-2 transition-colors group",
+              isActive ? "bg-white/8 border border-white/10" : "hover:bg-white/5 border border-transparent"
+            )
+          }
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/8 text-xs font-mono font-semibold text-white shrink-0">
             {(user?.name || "U").slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1 leading-tight">
@@ -77,13 +87,13 @@ export default function Sidebar() {
           </div>
           <button
             data-testid="logout-button"
-            onClick={async () => { await logout(); navigate("/login"); }}
+            onClick={async (e) => { e.preventDefault(); await logout(); navigate("/login"); }}
             className="rounded p-1.5 text-muted-foreground hover:text-fraudulent hover:bg-fraudulent/10 transition-colors"
             title="Sign out"
           >
             <SignOut size={16} />
           </button>
-        </div>
+        </NavLink>
       </div>
     </aside>
   );

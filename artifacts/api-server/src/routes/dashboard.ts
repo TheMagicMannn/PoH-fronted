@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes } from "crypto";
 import { db } from "@workspace/db";
 import {
   usersTable, workspacesTable, sitesTable, sessionsTable, conversionsTable,
@@ -713,16 +713,117 @@ function getPublicApiBase(req: import("express").Request): string {
 
 router.get("/sites", requireAuth, async (req, res) => {
   try {
-    const sites = await db.select().from(sitesTable).where(eq(sitesTable.workspaceId, wsId(req)));
+    const wid = wsId(req);
+    const sites = await db.select().from(sitesTable).where(eq(sitesTable.workspaceId, wid));
     const base = getPublicApiBase(req);
+
+    // Attach per-site session/conversion counts
+    const allSessions = await db
+      .select({ siteId: sessionsTable.siteId })
+      .from(sessionsTable)
+      .where(eq(sessionsTable.workspaceId, wid));
+    const sessionCounts: Record<string, number> = {};
+    for (const s of allSessions) if (s.siteId) sessionCounts[s.siteId] = (sessionCounts[s.siteId] ?? 0) + 1;
+
     res.json({
       sites: sites.map((s) => ({
         ...s,
+        sessions_total: sessionCounts[s.id] ?? 0,
         snippet: `<script async src="${base}/api/poh.js" data-poh-key="${s.sdkKey}"></script>`,
       })),
     });
   } catch {
     res.status(500).json({ detail: "Failed to load sites" });
+  }
+});
+
+router.post("/sites", requireRole("admin"), async (req, res) => {
+  try {
+    const wid = wsId(req);
+    const { name, domain } = req.body as { name?: string; domain?: string };
+    if (!name || !domain) { res.status(400).json({ detail: "name and domain are required" }); return; }
+    const sdkKey = "poh_" + randomBytes(16).toString("hex");
+    const verificationToken = "poh-verify=" + randomBytes(12).toString("hex");
+    const id = randomUUID();
+    await db.insert(sitesTable).values({ id, workspaceId: wid, name, domain: domain.toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, ""), sdkKey, verified: false, verificationToken });
+    await logAudit(wid, req.user!.name, "site.created", id, `Created site "${name}" for ${domain}`);
+    res.status(201).json({ id, name, domain, sdk_key: sdkKey, verified: false, verification_token: verificationToken });
+  } catch (err) {
+    res.status(500).json({ detail: "Failed to create site", error: String(err) });
+  }
+});
+
+router.patch("/sites/:sid", requireRole("admin"), async (req, res) => {
+  try {
+    const wid = wsId(req);
+    const sid = String(req.params["sid"]);
+    const [site] = await db.select().from(sitesTable).where(and(eq(sitesTable.id, sid), eq(sitesTable.workspaceId, wid))).limit(1);
+    if (!site) { res.status(404).json({ detail: "Site not found" }); return; }
+    const updates: Partial<typeof site> = {};
+    if (req.body.name) updates.name = req.body.name;
+    if (req.body.domain) updates.domain = (req.body.domain as string).toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    await db.update(sitesTable).set(updates).where(eq(sitesTable.id, sid));
+    await logAudit(wid, req.user!.name, "site.updated", sid, `Updated site "${site.name}"`);
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ detail: "Failed to update site" });
+  }
+});
+
+router.delete("/sites/:sid", requireRole("admin"), async (req, res) => {
+  try {
+    const wid = wsId(req);
+    const sid = String(req.params["sid"]);
+    const [site] = await db.select().from(sitesTable).where(and(eq(sitesTable.id, sid), eq(sitesTable.workspaceId, wid))).limit(1);
+    if (!site) { res.status(404).json({ detail: "Site not found" }); return; }
+    await db.delete(sitesTable).where(eq(sitesTable.id, sid));
+    await logAudit(wid, req.user!.name, "site.deleted", sid, `Deleted site "${site.name}" (${site.domain})`);
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ detail: "Failed to delete site" });
+  }
+});
+
+router.post("/sites/:sid/rotate-key", requireRole("admin"), async (req, res) => {
+  try {
+    const wid = wsId(req);
+    const sid = String(req.params["sid"]);
+    const [site] = await db.select().from(sitesTable).where(and(eq(sitesTable.id, sid), eq(sitesTable.workspaceId, wid))).limit(1);
+    if (!site) { res.status(404).json({ detail: "Site not found" }); return; }
+    const newKey = "poh_" + randomBytes(16).toString("hex");
+    await db.update(sitesTable).set({ sdkKey: newKey }).where(eq(sitesTable.id, sid));
+    await logAudit(wid, req.user!.name, "site.key_rotated", sid, `Rotated SDK key for "${site.name}"`);
+    res.json({ ok: true, sdk_key: newKey });
+  } catch {
+    res.status(500).json({ detail: "Failed to rotate key" });
+  }
+});
+
+router.post("/sites/:sid/verify", requireRole("admin"), async (req, res) => {
+  try {
+    const wid = wsId(req);
+    const sid = String(req.params["sid"]);
+    const [site] = await db.select().from(sitesTable).where(and(eq(sitesTable.id, sid), eq(sitesTable.workspaceId, wid))).limit(1);
+    if (!site) { res.status(404).json({ detail: "Site not found" }); return; }
+    if (site.verified) { res.json({ ok: true, verified: true }); return; }
+
+    let token = site.verificationToken;
+    if (!token) {
+      token = "poh-verify=" + randomBytes(12).toString("hex");
+      await db.update(sitesTable).set({ verificationToken: token }).where(eq(sitesTable.id, sid));
+    }
+
+    // In production this would do a real DNS TXT lookup. Here we simulate success via a flag in the request.
+    const forceVerify = req.body?.confirm === true;
+    if (forceVerify) {
+      await db.update(sitesTable).set({ verified: true }).where(eq(sitesTable.id, sid));
+      await logAudit(wid, req.user!.name, "site.verified", sid, `Verified domain "${site.domain}"`);
+      res.json({ ok: true, verified: true });
+    } else {
+      res.json({ ok: true, verified: false, dns_record: { type: "TXT", name: `_poh-verify.${site.domain}`, value: token } });
+    }
+  } catch {
+    res.status(500).json({ detail: "Failed to verify site" });
   }
 });
 

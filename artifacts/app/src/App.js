@@ -23,6 +23,8 @@ import Investigations from "@/pages/Investigations";
 import Integrations from "@/pages/Integrations";
 import Settings from "@/pages/Settings";
 import Onboarding from "@/pages/Onboarding";
+import Domains from "@/pages/Domains";
+import Profile from "@/pages/Profile";
 
 function FullScreenLoader() {
   return (
@@ -77,6 +79,8 @@ function App() {
               <Route path="integrations" element={<Integrations />} />
               <Route path="settings" element={<Settings />} />
               <Route path="onboarding" element={<Onboarding />} />
+              <Route path="domains" element={<Domains />} />
+              <Route path="profile" element={<Profile />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

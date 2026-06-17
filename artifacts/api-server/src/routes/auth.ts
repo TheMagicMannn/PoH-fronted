@@ -120,6 +120,35 @@ router.get("/me", requireAuth, (req, res) => {
   res.json(publicUser(req.user!));
 });
 
+router.patch("/profile", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user!.id;
+    const { name } = req.body as { name?: string };
+    if (!name?.trim()) { res.status(400).json({ detail: "name is required" }); return; }
+    await db.update(usersTable).set({ name: name.trim() }).where(eq(usersTable.id, uid));
+    res.json({ ok: true, name: name.trim() });
+  } catch {
+    res.status(500).json({ detail: "Failed to update profile" });
+  }
+});
+
+router.post("/change-password", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user!.id;
+    const { current_password, new_password } = req.body as { current_password?: string; new_password?: string };
+    if (!current_password || !new_password) { res.status(400).json({ detail: "current_password and new_password are required" }); return; }
+    if (new_password.length < 8) { res.status(400).json({ detail: "New password must be at least 8 characters" }); return; }
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, uid)).limit(1);
+    if (!user || !verifyPassword(current_password, user.passwordHash)) {
+      res.status(401).json({ detail: "Current password is incorrect" }); return;
+    }
+    await db.update(usersTable).set({ passwordHash: hashPassword(new_password) }).where(eq(usersTable.id, uid));
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ detail: "Failed to change password" });
+  }
+});
+
 router.post("/refresh", async (req, res) => {
   try {
     const token = req.cookies?.["refresh_token"] as string | undefined;
