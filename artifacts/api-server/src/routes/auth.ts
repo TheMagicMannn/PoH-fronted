@@ -1,0 +1,157 @@
+import { Router } from "express";
+import { randomUUID, randomBytes } from "crypto";
+import { db } from "@workspace/db";
+import { usersTable, workspacesTable, sitesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
+import {
+  hashPassword,
+  verifyPassword,
+  setAuthCookies,
+  clearAuthCookies,
+  verifyToken,
+  publicUser,
+  requireAuth,
+  type TokenPayload,
+} from "../lib/auth.js";
+
+const router = Router();
+
+async function createWorkspaceFor(userId: string, name: string): Promise<string> {
+  const wsId = randomUUID();
+  const sdkKey = "poh_" + randomBytes(16).toString("hex");
+  const siteId = randomUUID();
+  await db.insert(workspacesTable).values({
+    id: wsId,
+    name,
+    ownerId: userId,
+    sensitivityProfile: "balanced",
+    plan: "Growth",
+  });
+  await db.insert(sitesTable).values({
+    id: siteId,
+    workspaceId: wsId,
+    name,
+    domain: "example.com",
+    sdkKey,
+  });
+  return wsId;
+}
+
+router.post("/register", async (req, res) => {
+  try {
+    const { name, email, password, company } = req.body as {
+      name: string;
+      email: string;
+      password: string;
+      company?: string;
+    };
+
+    if (!name || !email || !password) {
+      res.status(400).json({ detail: "name, email and password are required" });
+      return;
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const existing = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, normalizedEmail))
+      .limit(1);
+
+    if (existing.length > 0) {
+      res.status(400).json({ detail: "An account with this email already exists" });
+      return;
+    }
+
+    const userId = randomUUID();
+    const wsName = (company ?? `${name.split(" ")[0]}'s Workspace`).trim();
+    const wsId = await createWorkspaceFor(userId, wsName);
+
+    await db.insert(usersTable).values({
+      id: userId,
+      name,
+      email: normalizedEmail,
+      passwordHash: hashPassword(password),
+      role: "owner",
+      workspaceId: wsId,
+    });
+
+    const user = { id: userId, name, email: normalizedEmail, role: "owner", workspaceId: wsId };
+    setAuthCookies(res, userId, normalizedEmail);
+    res.status(201).json(publicUser(user));
+  } catch (err) {
+    res.status(500).json({ detail: "Registration failed" });
+  }
+});
+
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body as { email: string; password: string };
+    if (!email || !password) {
+      res.status(400).json({ detail: "email and password are required" });
+      return;
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, normalizedEmail))
+      .limit(1);
+
+    if (!user || !verifyPassword(password, user.passwordHash)) {
+      res.status(401).json({ detail: "Invalid email or password" });
+      return;
+    }
+
+    setAuthCookies(res, user.id, user.email);
+    res.json(publicUser({ id: user.id, name: user.name, email: user.email, role: user.role, workspaceId: user.workspaceId }));
+  } catch (err) {
+    res.status(500).json({ detail: "Login failed" });
+  }
+});
+
+router.post("/logout", requireAuth, (_req, res) => {
+  clearAuthCookies(res);
+  res.json({ ok: true });
+});
+
+router.get("/me", requireAuth, (req, res) => {
+  res.json(publicUser(req.user!));
+});
+
+router.post("/refresh", async (req, res) => {
+  try {
+    const token = req.cookies?.["refresh_token"] as string | undefined;
+    if (!token) {
+      res.status(401).json({ detail: "No refresh token" });
+      return;
+    }
+
+    let payload: TokenPayload;
+    try {
+      payload = verifyToken(token, "refresh");
+    } catch {
+      res.status(401).json({ detail: "Invalid refresh token" });
+      return;
+    }
+
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, payload.sub))
+      .limit(1);
+
+    if (!user) {
+      res.status(401).json({ detail: "User not found" });
+      return;
+    }
+
+    setAuthCookies(res, user.id, user.email);
+    res.json(publicUser({ id: user.id, name: user.name, email: user.email, role: user.role, workspaceId: user.workspaceId }));
+  } catch {
+    res.status(500).json({ detail: "Refresh failed" });
+  }
+});
+
+export default router;
