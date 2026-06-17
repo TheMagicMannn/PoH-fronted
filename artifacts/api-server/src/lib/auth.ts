@@ -16,7 +16,12 @@ const ROLE_RANK: Record<string, number> = {
 
 function getJwtSecret(): string {
   const secret = process.env["JWT_SECRET"];
-  if (!secret) throw new Error("JWT_SECRET env var is required");
+  if (!secret) {
+    if (process.env["NODE_ENV"] === "production") {
+      throw new Error("JWT_SECRET secret is required in production — set it in the Replit Secrets tab");
+    }
+    return `poh_dev_fallback_${process.env["REPL_ID"] ?? "local"}_not_for_production`;
+  }
   return secret;
 }
 
