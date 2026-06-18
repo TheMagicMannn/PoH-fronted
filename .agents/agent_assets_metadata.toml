@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "i15pk-hHkNyiI7tD5coZy"
+uri = "file://lib/mcp-server/MCP_SETUP.md"
+type = "text"
+title = "PoH MCP Server — Full Setup Guide"
