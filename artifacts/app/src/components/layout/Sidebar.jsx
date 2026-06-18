@@ -4,10 +4,12 @@ import { useAuth } from "@/context/AuthContext";
 import {
   SquaresFour, Pulse, Target, Megaphone, ShieldCheck, MagnifyingGlass,
   PlugsConnected, GearSix, ShieldChevron, SignOut, Code, GlobeHemisphereWest,
+  Broadcast,
 } from "@phosphor-icons/react";
 
 const NAV = [
   { to: "/app", label: "Executive Overview", icon: SquaresFour, end: true },
+  { to: "/app/live", label: "Live Feed", icon: Broadcast },
   { to: "/app/sessions", label: "Session Intelligence", icon: Pulse },
   { to: "/app/conversions", label: "Conversions", icon: Target },
   { to: "/app/campaigns", label: "Campaign Quality", icon: Megaphone },

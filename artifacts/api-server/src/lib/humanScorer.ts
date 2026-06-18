@@ -140,11 +140,13 @@ function scoreBehavior(beh: Behavior): { score: number; reasons: string[] } {
   const durationMs = Number(beh.session_duration_ms ?? 0);
   const durationSec = durationMs / 1000;
 
-  let score = 55;
+  let score = 65;
 
-  // Mouse movement
+  // Mouse movement — only penalise lack of mouse on desktop (long sessions with
+  // zero mouse AND zero clicks means no touch input either, so likely not a human)
   const mouseCount = Number(beh.mouse_event_count ?? 0);
-  if (mouseCount === 0 && durationSec > 3) {
+  const clickCountEarly = Number(beh.click_count ?? 0);
+  if (mouseCount === 0 && clickCountEarly === 0 && durationSec > 5) {
     score -= 15;
     reasons.push("cursor_entropy_low");
   } else if (mouseCount > 10) {

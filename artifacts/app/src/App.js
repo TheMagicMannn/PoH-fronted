@@ -25,6 +25,7 @@ import Settings from "@/pages/Settings";
 import Onboarding from "@/pages/Onboarding";
 import Domains from "@/pages/Domains";
 import Profile from "@/pages/Profile";
+import LiveFeed from "@/pages/LiveFeed";
 
 function FullScreenLoader() {
   return (
@@ -81,6 +82,7 @@ function App() {
               <Route path="onboarding" element={<Onboarding />} />
               <Route path="domains" element={<Domains />} />
               <Route path="profile" element={<Profile />} />
+              <Route path="live" element={<LiveFeed />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
