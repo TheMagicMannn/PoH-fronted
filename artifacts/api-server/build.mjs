@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, copyFile } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -241,6 +241,15 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+
+  // Copy poh.js (browser SDK) into dist/vercel/ so that app.ts's
+  // `path.resolve(__dirname, "poh.js")` resolves correctly in the
+  // Vercel serverless runtime (where __dirname === dist/vercel/).
+  const distDir = path.resolve(artifactDir, "dist");
+  await copyFile(
+    path.resolve(distDir, "poh.js"),
+    path.resolve(vercelDir, "poh.js"),
+  );
 }
 
 buildAll()
