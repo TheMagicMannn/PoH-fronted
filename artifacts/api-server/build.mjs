@@ -121,11 +121,6 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   });
 }
 
-buildAll().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
-
 async function buildBrowserSdk() {
   const distDir = path.resolve(artifactDir, "dist");
   await esbuild({
@@ -143,7 +138,9 @@ async function buildBrowserSdk() {
   });
 }
 
-buildBrowserSdk().catch((err) => {
-  console.error("[browser-sdk]", err);
-  process.exit(1);
-});
+buildAll()
+  .then(() => buildBrowserSdk())
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
