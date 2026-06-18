@@ -1,17 +1,89 @@
+import { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetcher } from "@/lib/api";
 import api from "@/lib/api";
-import { Bell, Broadcast } from "@phosphor-icons/react";
+import { Bell, Broadcast, List, SquaresFour, Pulse, Target, Megaphone, ShieldCheck, MagnifyingGlass, PlugsConnected, GearSix, SignOut } from "@phosphor-icons/react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import pohMark from "@/assets/poh-mark.png";
+import { useAuth } from "@/context/AuthContext";
 
 const sevColor = {
   critical: "text-fraudulent border-fraudulent/30 bg-fraudulent/10",
   high: "text-suspicious border-suspicious/30 bg-suspicious/10",
   medium: "text-review border-review/30 bg-review/10",
 };
+
+const NAV = [
+  { to: "/app", label: "Executive Overview", icon: SquaresFour, end: true },
+  { to: "/app/sessions", label: "Session Intelligence", icon: Pulse },
+  { to: "/app/conversions", label: "Conversions", icon: Target },
+  { to: "/app/campaigns", label: "Campaign Quality", icon: Megaphone },
+  { to: "/app/rules", label: "Rules & Actions", icon: ShieldCheck },
+  { to: "/app/investigations", label: "Investigations", icon: MagnifyingGlass },
+  { to: "/app/integrations", label: "Integrations", icon: PlugsConnected },
+  { to: "/app/settings", label: "Workspace Settings", icon: GearSix },
+];
+
+function MobileNav() {
+  const [open, setOpen] = useState(false);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <button className="md:hidden rounded-md border border-white/10 bg-surface p-2 text-muted-foreground hover:text-white hover:border-white/20 transition-colors" aria-label="Open navigation">
+          <List size={18} />
+        </button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-[260px] border-r border-white/8 bg-[#0A0B0D] p-0">
+        <div className="flex items-center px-4 h-16 border-b border-white/8">
+          <NavLink to="/app" end onClick={() => setOpen(false)} className="inline-flex items-center" aria-label="PoH Intelligence">
+            <img src={pohMark} alt="PoH Intelligence" className="h-10 w-auto select-none" draggable="false" />
+          </NavLink>
+        </div>
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+          {NAV.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              onClick={() => setOpen(false)}
+              className={({ isActive }) =>
+                cn(
+                  "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",
+                  isActive
+                    ? "bg-trusted/10 text-white border border-trusted/20"
+                    : "text-muted-foreground hover:text-white hover:bg-white/5 border border-transparent"
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon size={18} weight={isActive ? "fill" : "regular"} className={isActive ? "text-trusted" : "text-muted-foreground group-hover:text-white"} />
+                  <span className="truncate">{item.label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="border-t border-white/8 px-3 py-3">
+          <button
+            onClick={async () => { setOpen(false); await logout(); navigate("/login"); }}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-all border border-transparent"
+          >
+            <SignOut size={18} />
+            <span>Sign out</span>
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 export default function Topbar() {
   const qc = useQueryClient();
@@ -30,6 +102,7 @@ export default function Topbar() {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-white/8 bg-[#08090A]/80 px-5 backdrop-blur-xl">
       <div className="flex items-center gap-3 min-w-0">
+        <MobileNav />
         <img src={pohMark} alt="PoH Intelligence" className="md:hidden h-9 w-auto select-none" draggable="false" />
         <div className="hidden sm:flex items-center gap-2 rounded-md border border-white/10 bg-surface px-3 py-1.5">
           <span className="h-2 w-2 rounded-full bg-trusted animate-pulse-dot" />
