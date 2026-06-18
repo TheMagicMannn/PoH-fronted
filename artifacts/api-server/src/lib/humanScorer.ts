@@ -117,6 +117,19 @@ function scoreBrowserIntegrity(sig: Signals): { score: number; reasons: string[]
     reasons.push("automation_framework_signature");
   }
 
+  // Known bot / crawler user-agent patterns
+  const ua = (sig.user_agent ?? "").toLowerCase();
+  const BOT_UA_PATTERNS = [
+    "bot", "crawl", "spider", "slurp", "curl/", "wget/",
+    "python-requests", "python-urllib", "go-http-client",
+    "java/", "scrapy", "phantomjs", "httpclient", "okhttp",
+    "axios/", "node-fetch", "got/", "got ", "undici",
+  ];
+  if (ua !== "" && BOT_UA_PATTERNS.some((p) => ua.includes(p))) {
+    score -= 50;
+    reasons.push("bot_user_agent");
+  }
+
   return { score: clamp(score), reasons };
 }
 
@@ -127,7 +140,7 @@ function scoreBehavior(beh: Behavior): { score: number; reasons: string[] } {
   const durationMs = Number(beh.session_duration_ms ?? 0);
   const durationSec = durationMs / 1000;
 
-  let score = 70;
+  let score = 55;
 
   // Mouse movement
   const mouseCount = Number(beh.mouse_event_count ?? 0);
@@ -213,6 +226,14 @@ function scoreBehavior(beh: Behavior): { score: number; reasons: string[] } {
   const idlePeriods = Number(beh.idle_periods ?? 0);
   if (durationSec > 15 && idlePeriods === 0) score -= 5;
   else if (idlePeriods > 0) score += 3;
+
+  // Zero interaction across all event types (regardless of duration)
+  const keyCount2 = Number(beh.key_event_count ?? 0);
+  const scrollCount2 = Number(beh.scroll_event_count ?? 0);
+  if (mouseCount === 0 && clickCount === 0 && keyCount2 === 0 && scrollCount2 === 0) {
+    score -= 12;
+    reasons.push("zero_interaction_signals");
+  }
 
   // Instant bot: very short session, no interaction
   if (durationSec < 1 && mouseCount === 0 && clickCount === 0) {
@@ -380,16 +401,16 @@ function estimateConfidence(
 // ─── Classification & decision ────────────────────────────────────────────────
 
 function classify(score: number): HumanClassification {
-  if (score >= 85) return "human";
-  if (score >= 65) return "suspicious_human";
-  if (score >= 40) return "automation";
+  if (score >= 78) return "human";
+  if (score >= 55) return "suspicious_human";
+  if (score >= 35) return "automation";
   return "bot";
 }
 
 function decide(score: number, confidence: number): HumanDecision {
-  if (score >= 85 && confidence >= 0.6) return "allow";
-  if (score >= 65) return "step_up";
-  if (score >= 40) return "challenge";
+  if (score >= 78 && confidence >= 0.6) return "allow";
+  if (score >= 55) return "step_up";
+  if (score >= 35) return "challenge";
   return "block";
 }
 
