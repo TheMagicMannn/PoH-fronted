@@ -12,6 +12,7 @@ import { eq, and, gte, desc, count, sql } from "drizzle-orm";
 import { requireAuth, requireRole, publicUser } from "../lib/auth.js";
 import { hashPassword } from "../lib/auth.js";
 import { scoreHumanAuthenticity } from "../lib/humanScorer.js";
+import { scoreTrafficIntelligence } from "../lib/trafficScorer.js";
 
 const router = Router();
 
@@ -50,6 +51,18 @@ const REASON_CODES: Record<string, { label: string; category: string }> = {
   abnormal_click_to_conversion_timing: { label: "Abnormally fast click-to-conversion timing", category: "behavioral" },
   anomalous_hardware_profile: { label: "Anomalous hardware concurrency profile", category: "fingerprint" },
   high_velocity_source: { label: "High request velocity from traffic source", category: "velocity" },
+  // Traffic Intelligence Engine reason codes
+  source_mismatch: { label: "Traffic source declaration inconsistent with observed behavior", category: "traffic" },
+  campaign_spike: { label: "Unusual campaign traffic spike or missing attribution", category: "traffic" },
+  low_engagement: { label: "Very low engagement signals — no scroll, click, or time on page", category: "traffic" },
+  conversion_too_fast: { label: "Conversion timing too fast for genuine user interaction", category: "traffic" },
+  datacenter_network: { label: "Traffic originating from datacenter, proxy, or VPN infrastructure", category: "traffic" },
+  referral_loop: { label: "Referral source loop or inconsistency detected", category: "traffic" },
+  repeat_fingerprint: { label: "Device fingerprint or automation markers indicate non-unique visitor", category: "traffic" },
+  geo_inconsistency: { label: "IP geolocation unresolvable or inconsistent with declared source", category: "traffic" },
+  burst_pattern: { label: "Traffic arriving in mechanical burst pattern inconsistent with human browsing", category: "traffic" },
+  suspicious_attribution: { label: "Attribution chain shows paste-only, no-mouse, or scripted behavior", category: "traffic" },
+  unknown_source: { label: "Traffic source is unknown, unrecognized, or absent", category: "traffic" },
   // Human Authenticity Engine reason codes
   webdriver_detected: { label: "WebDriver automation flag detected in browser", category: "automation" },
   headless_browser_detected: { label: "High-confidence headless browser environment", category: "automation" },
@@ -254,6 +267,35 @@ router.get("/overview", requireAuth, async (req, res) => {
       historical: Math.round(scoredSessions.reduce((acc, s) => acc + (s.historicalScore ?? 0), 0) / scoredSessions.length),
     } : null;
 
+    // Traffic Intelligence Engine aggregations
+    const trafficTierMap: Record<string, number> = {};
+    for (const s of sessions) {
+      const tier = s.trafficRiskTier ?? "unscored";
+      trafficTierMap[tier] = (trafficTierMap[tier] ?? 0) + 1;
+    }
+    const trafficRiskTierBreakdown = [
+      { name: "low",      label: "Low Risk",  value: trafficTierMap["low"]      ?? 0 },
+      { name: "medium",   label: "Medium",    value: trafficTierMap["medium"]   ?? 0 },
+      { name: "elevated", label: "Elevated",  value: trafficTierMap["elevated"] ?? 0 },
+      { name: "high",     label: "High Risk", value: trafficTierMap["high"]     ?? 0 },
+      { name: "critical", label: "Critical",  value: trafficTierMap["critical"] ?? 0 },
+    ];
+    const trafficScoredSessions = sessions.filter((s) => s.trafficTrustScore != null);
+    const avgTrafficTrustScore = trafficScoredSessions.length > 0
+      ? Math.round(trafficScoredSessions.reduce((acc, s) => acc + (s.trafficTrustScore ?? 0), 0) / trafficScoredSessions.length)
+      : null;
+    const avgTrafficScores = trafficScoredSessions.length > 0 ? {
+      traffic_trust: avgTrafficTrustScore,
+      source:        Math.round(trafficScoredSessions.reduce((acc, s) => acc + (s.trafficSourceScore ?? 0), 0)        / trafficScoredSessions.length),
+      campaign:      Math.round(trafficScoredSessions.reduce((acc, s) => acc + (s.trafficCampaignScore ?? 0), 0)      / trafficScoredSessions.length),
+      engagement:    Math.round(trafficScoredSessions.reduce((acc, s) => acc + (s.trafficEngagementScore ?? 0), 0)    / trafficScoredSessions.length),
+      conversion:    Math.round(trafficScoredSessions.reduce((acc, s) => acc + (s.trafficConversionScore ?? 0), 0)    / trafficScoredSessions.length),
+      referral:      Math.round(trafficScoredSessions.reduce((acc, s) => acc + (s.trafficReferralScore ?? 0), 0)      / trafficScoredSessions.length),
+      geo:           Math.round(trafficScoredSessions.reduce((acc, s) => acc + (s.trafficGeoScore ?? 0), 0)           / trafficScoredSessions.length),
+      temporal:      Math.round(trafficScoredSessions.reduce((acc, s) => acc + (s.trafficTemporalScore ?? 0), 0)      / trafficScoredSessions.length),
+      device_network: Math.round(trafficScoredSessions.reduce((acc, s) => acc + (s.trafficDeviceNetworkScore ?? 0), 0) / trafficScoredSessions.length),
+    } : null;
+
     res.json({
       range,
       kpis: {
@@ -271,6 +313,7 @@ router.get("/overview", requireAuth, async (req, res) => {
         avg_trust_score: avgTrustScore,
         avg_confidence: avgConfidence,
         avg_human_score: avgHumanScore,
+        avg_traffic_trust_score: avgTrafficTrustScore,
       },
       distribution: [
         { name: "trusted", value: byCls["trusted"] ?? 0 },
@@ -288,6 +331,8 @@ router.get("/overview", requireAuth, async (req, res) => {
       score_distribution: scoreDist,
       human_classification_breakdown: humanClassificationBreakdown,
       avg_human_scores: avgHumanScores,
+      traffic_risk_tier_breakdown: trafficRiskTierBreakdown,
+      avg_traffic_scores: avgTrafficScores,
     });
   } catch (err) {
     res.status(500).json({ detail: "Failed to load overview" });
@@ -997,8 +1042,8 @@ router.post("/demo/seed", requireRole("admin"), async (req, res) => {
       const daysAgo = Math.random() * 14;
       const startedAt = new Date(now.getTime() - daysAgo * 86400000);
       const reasons: string[] = [];
-      if (isFraud) reasons.push("webdriver_detected", "headless_browser_detected", "automation_framework_signature");
-      if (isSuspicious) reasons.push("cursor_entropy_low", "vpn_usage");
+      if (isFraud) reasons.push("webdriver_detected", "headless_browser_detected", "automation_framework_signature", "datacenter_network", "repeat_fingerprint");
+      if (isSuspicious) reasons.push("cursor_entropy_low", "vpn_usage", "source_mismatch", "low_engagement");
 
       // Human Authenticity Engine scores derived from classification
       const humanScore = isFraud
@@ -1020,6 +1065,33 @@ router.post("/demo/seed", requireRole("admin"), async (req, res) => {
       const dcScore = Math.round(Math.max(0, Math.min(100, humanScore + (Math.random() * 16 - 8))));
       const netScore = Math.round(Math.max(0, Math.min(100, humanScore + (Math.random() * 16 - 8))));
       const histScore = Math.round(Math.max(0, Math.min(100, humanScore + (Math.random() * 14 - 7))));
+
+      // Traffic Intelligence Engine scores (0-1000 scale)
+      const trafficTrustScore = isFraud
+        ? Math.round(120 + Math.random() * 280)   // 120-400 high/critical
+        : isSuspicious
+        ? Math.round(380 + Math.random() * 220)   // 380-600 elevated/medium
+        : Math.round(620 + Math.random() * 310);  // 620-930 low/medium
+      const trafficRiskTier = trafficTrustScore >= 800 ? "low"
+        : trafficTrustScore >= 650 ? "medium"
+        : trafficTrustScore >= 500 ? "elevated"
+        : trafficTrustScore >= 300 ? "high"
+        : "critical";
+      const trafficDecision = trafficTrustScore >= 850 ? "allow"
+        : trafficTrustScore >= 700 ? "allow_and_monitor"
+        : trafficTrustScore >= 550 ? "deprioritize"
+        : trafficTrustScore >= 400 ? "challenge"
+        : "block_source";
+      const trafficConf = Math.round((0.60 + Math.random() * 0.35) * 100) / 100;
+      const tBase = trafficTrustScore / 10;
+      const tSrc  = Math.round(Math.max(0, Math.min(100, tBase + (Math.random() * 20 - 10))));
+      const tCamp = Math.round(Math.max(0, Math.min(100, tBase + (Math.random() * 20 - 10))));
+      const tEng  = Math.round(Math.max(0, Math.min(100, tBase + (Math.random() * 16 - 8))));
+      const tConv = Math.round(Math.max(0, Math.min(100, tBase + (Math.random() * 16 - 8))));
+      const tRef  = Math.round(Math.max(0, Math.min(100, tBase + (Math.random() * 14 - 7))));
+      const tGeo  = Math.round(Math.max(0, Math.min(100, tBase + (Math.random() * 14 - 7))));
+      const tTemp = Math.round(Math.max(0, Math.min(100, tBase + (Math.random() * 12 - 6))));
+      const tDN   = Math.round(Math.max(0, Math.min(100, tBase + (Math.random() * 12 - 6))));
 
       sessionInserts.push({
         id: randomUUID(), workspaceId: wid, siteId: site.id, sessionId: `sess_${randomUUID().slice(0, 8)}`,
@@ -1044,6 +1116,20 @@ router.post("/demo/seed", requireRole("admin"), async (req, res) => {
         deviceConsistencyScore: dcScore,
         networkScore: netScore,
         historicalScore: histScore,
+        trafficTrustScore,
+        trafficQualityScore: Math.round(trafficTrustScore / 10),
+        trafficFraudScore: Math.round(100 - trafficTrustScore / 10),
+        trafficConfidence: trafficConf,
+        trafficRiskTier,
+        trafficDecision,
+        trafficSourceScore: tSrc,
+        trafficCampaignScore: tCamp,
+        trafficEngagementScore: tEng,
+        trafficConversionScore: tConv,
+        trafficReferralScore: tRef,
+        trafficGeoScore: tGeo,
+        trafficTemporalScore: tTemp,
+        trafficDeviceNetworkScore: tDN,
         startedAt,
       });
 
@@ -1151,7 +1237,23 @@ router.post("/collect", async (req, res) => {
       : humanResult.humanDecision === "challenge" ? "flag"
       : humanResult.humanDecision === "step_up" ? "review"
       : "observe";
-    const reasonCodes = humanResult.reasonCodes;
+    // --- Traffic Intelligence Engine ---
+    const trafficResult = scoreTrafficIntelligence({
+      source: String(utm.source ?? "direct"),
+      medium: utm.medium ?? null,
+      campaign: utm.campaign ?? null,
+      adSet: utm.ad_set ?? null,
+      landingPage: body.page ?? null,
+      referrer: body.referrer ?? null,
+      signals: sig,
+      behavior: beh,
+      geo,
+      ip: clientIp || null,
+      deviceType: parsedDevice,
+      browser: parsedBrowser,
+      os: parsedOs,
+    });
+    const reasonCodes = [...new Set([...humanResult.reasonCodes, ...trafficResult.reasonCodes])];
 
     await db.insert(sessionsTable).values({
       id: randomUUID(),
@@ -1187,6 +1289,20 @@ router.post("/collect", async (req, res) => {
       deviceConsistencyScore: humanResult.deviceConsistencyScore,
       networkScore: humanResult.networkScore,
       historicalScore: humanResult.historicalScore,
+      trafficTrustScore: trafficResult.trafficTrustScore,
+      trafficQualityScore: trafficResult.trafficQualityScore,
+      trafficFraudScore: trafficResult.trafficFraudScore,
+      trafficConfidence: trafficResult.trafficConfidence,
+      trafficRiskTier: trafficResult.trafficRiskTier,
+      trafficDecision: trafficResult.trafficDecision,
+      trafficSourceScore: trafficResult.trafficSourceScore,
+      trafficCampaignScore: trafficResult.trafficCampaignScore,
+      trafficEngagementScore: trafficResult.trafficEngagementScore,
+      trafficConversionScore: trafficResult.trafficConversionScore,
+      trafficReferralScore: trafficResult.trafficReferralScore,
+      trafficGeoScore: trafficResult.trafficGeoScore,
+      trafficTemporalScore: trafficResult.trafficTemporalScore,
+      trafficDeviceNetworkScore: trafficResult.trafficDeviceNetworkScore,
       startedAt: new Date(),
     }).onConflictDoNothing();
 
@@ -1217,6 +1333,11 @@ router.post("/collect", async (req, res) => {
         human_confidence: humanResult.humanConfidence,
         action,
         reason_codes: reasonCodes,
+        traffic_trust_score: trafficResult.trafficTrustScore,
+        traffic_risk_tier: trafficResult.trafficRiskTier,
+        traffic_decision: trafficResult.trafficDecision,
+        traffic_quality_score: trafficResult.trafficQualityScore,
+        traffic_confidence: trafficResult.trafficConfidence,
       },
     });
   } catch (err) {

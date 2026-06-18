@@ -1,3 +1,5 @@
 - [Vite JSX in .js files](vite-jsx-js-files.md) — .js files with JSX need special vite.config.ts treatment to parse correctly
 - [SDK package location](sdk-package.md) — client SDK for PoH engines lives at lib/sdk (@workspace/sdk), covers Human/Traffic/Revenue/Analytics engines
 - [Browser SDK build](browser-sdk-build.md) — poh.ts uses DOM globals, excluded from Node.js tsconfig, has own tsconfig with DOM lib, built to dist/poh.js
+- [TIEg scorer design](tieg-scorer.md) — pure function, 0–1000 scale (×10 of 0–100 sub-scores), 5 tiers, 5 decisions; no DB calls needed at score time.
+- [Engine implementation pattern](engine-pattern.md) — each engine: DB schema → pure scorer → dashboard.ts (reason codes + collect + overview + seed) → frontend (Overview panel + SessionDrawer section).

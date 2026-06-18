@@ -9,7 +9,7 @@ import { fmtDateTime, fmtCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
   MapPin, DeviceMobile, Browsers, Fingerprint, Globe, Clock, ShieldCheck, Eye, Prohibit, X,
-  UserCircle, Brain, HardDrives, WifiHigh, ClockCountdown,
+  UserCircle, Brain, HardDrives, WifiHigh, ClockCountdown, Pulse, Target,
 } from "@phosphor-icons/react";
 
 function SignalRow({ label, value, bad }) {
@@ -85,6 +85,7 @@ export default function SessionDrawer({ sessionId, open, onClose }) {
 
   const sig = s?.signals || {};
   const hasHumanScore = s?.human_score != null;
+  const hasTrafficScore = s?.traffic_trust_score != null;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -158,6 +159,55 @@ export default function SessionDrawer({ sessionId, open, onClose }) {
                     <SubScoreBar label="Device Consistency" score={s.device_consistency_score} icon={HardDrives} weight="15%" />
                     <SubScoreBar label="Network Reputation" score={s.network_score} icon={WifiHigh} weight="20%" />
                     <SubScoreBar label="Historical Auth." score={s.historical_score} icon={ClockCountdown} weight="15%" />
+                  </div>
+                </section>
+              )}
+
+              {/* Traffic Intelligence Engine */}
+              {hasTrafficScore && (
+                <section>
+                  <h3 className="data-label mb-2.5 flex items-center gap-1.5">
+                    <Globe size={13} className="text-muted-foreground" />
+                    Traffic Intelligence Score
+                  </h3>
+                  <div className="rounded-md border border-white/8 bg-surface p-4 space-y-1">
+                    <div className="flex items-center justify-between pb-2 mb-1 border-b border-white/8">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-2xl font-bold tabular-nums text-white">
+                          {s.traffic_trust_score}
+                          <span className="text-sm text-muted-foreground font-normal">/1000</span>
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium capitalize" style={{
+                            color: s.traffic_risk_tier === "low" ? "#34D399"
+                              : s.traffic_risk_tier === "medium" ? "#60A5FA"
+                              : s.traffic_risk_tier === "elevated" ? "#FBBF24"
+                              : s.traffic_risk_tier === "high" ? "#F87171"
+                              : "#DC2626"
+                          }}>
+                            {(s.traffic_risk_tier ?? "—").replace("_", " ")} risk
+                          </p>
+                          <p className="font-mono text-[11px] text-muted-foreground">
+                            Decision:{" "}
+                            <span className="font-medium text-slate-300">
+                              {(s.traffic_decision ?? "—").replace(/_/g, " ")}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono text-xs text-muted-foreground">Confidence</p>
+                        <p className="font-mono text-sm font-medium text-white">{Math.round((s.traffic_confidence ?? 0) * 100)}%</p>
+                      </div>
+                    </div>
+                    <SubScoreBar label="Source Intelligence"   score={s.traffic_source_score}        icon={Globe}          weight="15%" />
+                    <SubScoreBar label="Campaign Intelligence" score={s.traffic_campaign_score}      icon={Target}         weight="15%" />
+                    <SubScoreBar label="Engagement"           score={s.traffic_engagement_score}    icon={Pulse}          weight="15%" />
+                    <SubScoreBar label="Conversion Integrity" score={s.traffic_conversion_score}    icon={ShieldCheck}    weight="15%" />
+                    <SubScoreBar label="Referral Intel."      score={s.traffic_referral_score}      icon={WifiHigh}       weight="10%" />
+                    <SubScoreBar label="Geographic Intel."    score={s.traffic_geo_score}           icon={MapPin}         weight="10%" />
+                    <SubScoreBar label="Temporal Patterns"    score={s.traffic_temporal_score}      icon={ClockCountdown} weight="10%" />
+                    <SubScoreBar label="Device / Network"     score={s.traffic_device_network_score} icon={HardDrives}    weight="10%" />
                   </div>
                 </section>
               )}

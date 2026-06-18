@@ -16,6 +16,9 @@ import {
 } from "@phosphor-icons/react";
 
 const COLORS = { trusted: "#34D399", suspicious: "#FBBF24", fraudulent: "#F87171" };
+const TRAFFIC_TIER_COLORS = {
+  low: "#34D399", medium: "#60A5FA", elevated: "#FBBF24", high: "#F87171", critical: "#DC2626",
+};
 
 // Reverse map: full country name → ISO-2 code (for seeded data compatibility)
 const COUNTRY_TO_ISO = {
@@ -104,6 +107,10 @@ export default function Overview() {
   const humanBreakdown = data.human_classification_breakdown ?? [];
   const avgHuman = data.avg_human_scores;
   const totalHuman = humanBreakdown.reduce((s, d) => s + d.value, 0) || 1;
+  const trafficTierBreakdown = data.traffic_risk_tier_breakdown ?? [];
+  const avgTrafficScores = data.avg_traffic_scores;
+  const totalTrafficTier = trafficTierBreakdown.reduce((s, d) => s + d.value, 0) || 1;
+  const avgTrafficScore = k.avg_traffic_trust_score;
 
   const maxGeoTotal = Math.max(...geoData.map((r) => r.total), 1);
   const maxDeviceTotal = Math.max(...deviceData.map((r) => r.total), 1);
@@ -532,6 +539,99 @@ export default function Overview() {
                 </p>
               )}
             </>
+          )}
+        </Card>
+      </div>
+
+      {/* ── Traffic Intelligence Engine ── */}
+      <div className="grid gap-4 lg:grid-cols-2" data-testid="panel-traffic-intel">
+        {/* Risk tier donut */}
+        <Card className="p-5">
+          <SectionTitle title="Traffic Intelligence" desc="Risk tier distribution across all scored sessions" icon={Gauge} />
+          <div className="relative mt-2">
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={trafficTierBreakdown.filter((d) => d.value > 0)}
+                  dataKey="value" nameKey="label"
+                  innerRadius={62} outerRadius={88} paddingAngle={2} strokeWidth={0}
+                >
+                  {trafficTierBreakdown.map((d) => (
+                    <Cell key={d.name} fill={TRAFFIC_TIER_COLORS[d.name] ?? "#475569"} />
+                  ))}
+                </Pie>
+                <Tooltip content={<ChartTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              {avgTrafficScore != null ? (
+                <>
+                  <span className="font-mono text-2xl font-semibold text-white">{avgTrafficScore}</span>
+                  <span className="data-label">avg / 1000</span>
+                </>
+              ) : (
+                <span className="data-label text-center">no data</span>
+              )}
+            </div>
+          </div>
+          <div className="mt-3 space-y-1.5">
+            {trafficTierBreakdown.map((d) => (
+              <div key={d.name} className="flex items-center gap-2 text-sm">
+                <span className="h-2.5 w-2.5 rounded-sm" style={{ background: TRAFFIC_TIER_COLORS[d.name] ?? "#475569" }} />
+                <span className="capitalize text-slate-300">{d.label}</span>
+                <span className="ml-auto font-mono text-white tabular-nums">{fmtNum(d.value)}</span>
+                <span className="w-12 text-right font-mono text-xs text-muted-foreground">
+                  {fmtPct((d.value / totalTrafficTier) * 100)}
+                </span>
+              </div>
+            ))}
+            {trafficTierBreakdown.every((d) => d.value === 0) && (
+              <p className="text-sm text-muted-foreground">No traffic scores in range. Run demo seed to populate.</p>
+            )}
+          </div>
+        </Card>
+
+        {/* 8 sub-score breakdown */}
+        <Card className="p-5">
+          <SectionTitle title="Sub-Score Breakdown" desc="Average across the 8 Traffic Intelligence groups (0–100 each)" />
+          {avgTrafficScores ? (
+            <div className="mt-2 space-y-0">
+              {[
+                { key: "source",         label: "Source Intelligence",    weight: "15%", icon: Globe },
+                { key: "campaign",       label: "Campaign Intelligence",  weight: "15%", icon: Target },
+                { key: "engagement",     label: "Engagement",             weight: "15%", icon: Pulse },
+                { key: "conversion",     label: "Conversion Integrity",   weight: "15%", icon: ShieldWarning },
+                { key: "referral",       label: "Referral Intelligence",  weight: "10%", icon: WifiHigh },
+                { key: "geo",            label: "Geographic Intel.",      weight: "10%", icon: Globe },
+                { key: "temporal",       label: "Temporal Patterns",      weight: "10%", icon: ClockCountdown },
+                { key: "device_network", label: "Device / Network",       weight: "10%", icon: HardDrives },
+              ].map(({ key, label, weight, icon: Icon }) => {
+                const score = avgTrafficScores[key];
+                const color = score >= 75 ? "#34D399" : score >= 50 ? "#FBBF24" : "#F87171";
+                return (
+                  <div key={key} className="flex items-center gap-2.5 py-1.5">
+                    <Icon size={13} style={{ color }} className="shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-mono text-[11px] text-slate-400">{label}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] text-muted-foreground">{weight}</span>
+                          <span className="font-mono text-xs font-medium tabular-nums" style={{ color }}>
+                            {score ?? "—"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${score ?? 0}%`, background: color, opacity: 0.8 }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">No traffic scores yet. Run demo seed to populate.</p>
           )}
         </Card>
       </div>
