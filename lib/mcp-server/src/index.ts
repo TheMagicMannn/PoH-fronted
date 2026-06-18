@@ -426,6 +426,60 @@ Block / step-up / monitor / allow — with concrete justification.`,
 );
 
 server.prompt(
+  "implement_sdk",
+  "Step-by-step guided workflow that helps a developer integrate the PoH SDK into their site, auto-filling their real API key. The agent will discover the workspace credentials, generate the right code snippet for the user's stack, and walk through verification.",
+  {
+    stack: z.enum(["html","javascript","react","nextjs","wordpress","shopify","conversion_pixel","gtm"])
+      .describe("The tech stack of the site being integrated"),
+    site_domain: z.string().optional().describe("The domain of the site (e.g. myshop.com)"),
+    include_conversion_tracking: z.boolean().default(false)
+      .describe("Whether to include conversion tracking in the generated snippet"),
+  },
+  async ({ stack, site_domain, include_conversion_tracking }) => ({
+    messages: [{
+      role: "user" as const,
+      content: {
+        type: "text" as const,
+        text: `Help me integrate the PoH Trust & Fraud Intelligence SDK into my **${stack}** site${site_domain ? ` (${site_domain})` : ""}.
+
+Please walk me through the full setup step by step:
+
+### Step 1 — Discover my workspace credentials
+Use \`get_workspace_info\` to find my workspace name and confirm my API key is available.
+
+### Step 2 — Generate my personalised integration snippet
+Call \`generate_sdk_snippet\` with:
+- stack: "${stack}"${site_domain ? `\n- site_domain: "${site_domain}"` : ""}
+- include_conversion_tracking: ${include_conversion_tracking}
+- Do NOT pass api_key — let the tool fetch it automatically from the workspace.
+
+### Step 3 — Present the snippet
+Show me the complete, copy-paste-ready code with my real API key already filled in. 
+Clearly mark **exactly where** to paste it in my ${stack === "html" ? "HTML file" : stack === "wordpress" ? "functions.php or plugin" : stack === "shopify" ? "theme.liquid file" : stack === "gtm" ? "GTM container" : "project"}.
+
+### Step 4 — Explain each part
+In plain language (no jargon), explain:
+1. What the SDK does when it loads
+2. What data it collects and how it protects privacy
+3. What the trust score means for my business (0 = total fraud, 1000 = fully trusted)
+4. How quickly sessions appear in the PoH dashboard after I deploy
+${include_conversion_tracking ? "5. How conversion tracking works and what shows up in the dashboard\n" : ""}
+### Step 5 — Verification checklist
+Give me a short checklist of how to confirm the integration is working:
+- What to look for in the PoH dashboard (Sessions page)
+- How to run a quick smoke test using \`list_sessions\` or \`score_session\`
+- Common mistakes to avoid for ${stack}
+
+### Step 6 — Next steps
+Suggest 2-3 follow-up things I should do after the basic integration is live (e.g. setting up conversion tracking, creating fraud rules, connecting a campaign).
+
+Be concrete, specific, and friendly. Assume I'm a developer who knows how to edit code but may not be familiar with fraud detection platforms.`,
+      },
+    }],
+  })
+);
+
+server.prompt(
   "fraud_weekly_report",
   "Generate a comprehensive weekly fraud intelligence report — all KPIs, trends, top threats, campaign analysis, open investigations, and recommended actions for the next 7 days.",
   {},
@@ -483,6 +537,381 @@ Prioritised list of concrete steps (budget adjustments, rule additions, investig
       },
     }],
   })
+);
+
+// ── 17. Generate SDK Snippet ──────────────────────────────────────────────────
+server.tool(
+  "generate_sdk_snippet",
+  "Generate a complete, ready-to-paste SDK integration code snippet pre-filled with the caller's real API key. Supports HTML script-tag embed, vanilla JS/NPM init, React hook, Next.js middleware, WordPress PHP, Shopify Liquid, and conversion tracking. Call get_workspace_info first if you don't already have the api_key — or omit api_key and this tool will fetch it automatically.",
+  {
+    stack: z.enum([
+      "html",
+      "javascript",
+      "react",
+      "nextjs",
+      "wordpress",
+      "shopify",
+      "conversion_pixel",
+      "gtm",
+    ]).describe(
+      "Target integration stack:\n" +
+      "  html            — <script> tag embed for any HTML page\n" +
+      "  javascript      — NPM / vanilla JS SDK init block\n" +
+      "  react           — React hook + provider component\n" +
+      "  nextjs          — Next.js middleware + app-router provider\n" +
+      "  wordpress       — PHP functions.php + WooCommerce hook\n" +
+      "  shopify         — Liquid theme.liquid + Order confirmation snippet\n" +
+      "  conversion_pixel — Lightweight conversion-tracking pixel (no full SDK)\n" +
+      "  gtm             — Google Tag Manager custom HTML tag"
+    ),
+    api_key: z.string().optional()
+      .describe("Your PoH SDK API key (from the Integrations page). Omit to auto-fetch from the workspace."),
+    site_domain: z.string().optional()
+      .describe("The domain this snippet will run on, e.g. 'myshop.com'. Used to scope the integration."),
+    include_conversion_tracking: z.boolean().default(false)
+      .describe("Whether to include conversion tracking code alongside the main SDK snippet."),
+  },
+  async ({ stack, api_key: providedKey, site_domain, include_conversion_tracking }) => {
+    let apiKey = providedKey;
+    if (!apiKey) {
+      try {
+        const ws = await get<{ workspace?: { sdk_key?: string; api_key?: string } }>("/workspace");
+        apiKey = ws?.workspace?.sdk_key ?? ws?.workspace?.api_key ?? "<YOUR_API_KEY>";
+      } catch {
+        apiKey = "<YOUR_API_KEY>";
+      }
+    }
+    const domain = site_domain ?? "yourdomain.com";
+    const cdnUrl = `https://cdn.poh.ai/sdk/v1/poh.js`;
+    const apiBase = API_URL.replace(/\/api$/, "");
+
+    const conversionSnippet = include_conversion_tracking ? `
+
+// ── Conversion Tracking ───────────────────────────────────────────────────────
+// Call this when a user completes a purchase / lead form / sign-up.
+poh.trackConversion({
+  conversionId: "<ORDER_ID_OR_FORM_ID>",   // unique ID for this conversion
+  value:        0.00,                       // revenue value (USD or your currency)
+  currency:     "USD",
+  campaign:     "<CAMPAIGN_NAME>",          // match the campaign name in PoH dashboard
+  source:       "<UTM_SOURCE>",             // e.g. 'google', 'meta', 'email'
+  metadata: {
+    // any extra fields you want to store (product IDs, plan names, etc.)
+  },
+});` : "";
+
+    const snippets: Record<string, string> = {
+      html: `<!-- PoH Trust & Fraud Intelligence SDK -->
+<!-- Place this snippet in your <head> tag on every page you want to protect. -->
+<script>
+  (function(w,d,s,k){
+    w._pohKey = k;
+    var el = d.createElement(s); el.async = true;
+    el.src = '${cdnUrl}?key=' + k;
+    d.head.appendChild(el);
+    w.poh = w.poh || { q:[], track:function(){poh.q.push(arguments)} };
+  })(window, document, 'script', '${apiKey}');
+</script>
+<!-- End PoH SDK -->
+${include_conversion_tracking ? `
+<!-- Conversion Tracking — place on your order-confirmation / thank-you page -->
+<script>
+  poh.track('conversion', {
+    conversionId: '<ORDER_ID>',   // replace with your order/lead ID
+    value:        0.00,           // revenue amount (e.g. 99.99)
+    currency:     'USD',
+    campaign:     '<CAMPAIGN>',   // UTM campaign name
+    source:       '<SOURCE>',     // UTM source: 'google', 'meta', etc.
+  });
+</script>` : ""}`,
+
+      javascript: `// PoH Trust & Fraud Intelligence SDK — NPM / Vanilla JS
+// npm install @poh/sdk
+import { PoH } from '@poh/sdk';
+
+const poh = new PoH({
+  apiKey:  '${apiKey}',
+  apiUrl:  '${apiBase}',   // omit to use the default cloud endpoint
+  domain:  '${domain}',
+  // autoFingerprint: true,  // default true — captures device signals automatically
+  // debug:           false, // set true in dev to see verbose console logs
+});
+
+// Session scoring starts automatically on init.
+// Optionally await the first score:
+const score = await poh.getScore();
+console.log('TIE Trust Score:', score.tieTrustScore, '/ 1000');
+console.log('Verdict:',        score.classification);
+console.log('Action:',         score.action);
+${conversionSnippet}`,
+
+      react: `// PoH Trust & Fraud Intelligence — React Hook + Provider
+// npm install @poh/sdk
+
+// 1. Wrap your app (e.g. in main.tsx / _app.tsx):
+import { PohProvider } from '@poh/sdk/react';
+
+export default function App({ children }) {
+  return (
+    <PohProvider
+      apiKey="${apiKey}"
+      apiUrl="${apiBase}"
+      domain="${domain}"
+    >
+      {children}
+    </PohProvider>
+  );
+}
+
+// 2. Use the hook anywhere in your component tree:
+import { usePoh } from '@poh/sdk/react';
+
+function CheckoutButton() {
+  const { score, classification, action, isLoading } = usePoh();
+
+  if (isLoading) return <button disabled>Loading...</button>;
+
+  // Block fraudulent users before they can submit
+  if (action === 'block') {
+    return <p>Session blocked due to suspicious activity.</p>;
+  }
+${include_conversion_tracking ? `
+  const { trackConversion } = usePoh();
+
+  function handlePurchase(orderId, amount) {
+    trackConversion({
+      conversionId: orderId,
+      value:        amount,
+      currency:     'USD',
+      campaign:     new URLSearchParams(window.location.search).get('utm_campaign') ?? '',
+      source:       new URLSearchParams(window.location.search).get('utm_source')   ?? '',
+    });
+  }
+` : ""}
+  return (
+    <button onClick={handlePurchase}>
+      Complete Purchase
+      {/* TIE score: {score} / 1000 */}
+    </button>
+  );
+}`,
+
+      nextjs: `// PoH Trust & Fraud Intelligence — Next.js (App Router)
+// npm install @poh/sdk
+
+// 1. middleware.ts — server-side session pre-scoring (Edge Runtime)
+//    Place at project root alongside next.config.ts
+import { pohMiddleware } from '@poh/sdk/next';
+
+export const middleware = pohMiddleware({
+  apiKey: '${apiKey}',
+  apiUrl: '${apiBase}',
+  // blockOnFraud: true,   // auto-block requests with action === 'block'
+  // matcher applied below
+});
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
+
+// 2. app/layout.tsx — client-side SDK provider
+import { PohProvider } from '@poh/sdk/react';
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>
+        <PohProvider
+          apiKey="${apiKey}"
+          apiUrl="${apiBase}"
+          domain="${domain}"
+        >
+          {children}
+        </PohProvider>
+      </body>
+    </html>
+  );
+}
+${include_conversion_tracking ? `
+// 3. app/api/conversion/route.ts — server-side conversion tracking
+import { pohTrackConversion } from '@poh/sdk/server';
+
+export async function POST(req: Request) {
+  const body = await req.json();
+  await pohTrackConversion({
+    apiKey:       '${apiKey}',
+    apiUrl:       '${apiBase}',
+    conversionId: body.orderId,
+    value:        body.amount,
+    currency:     'USD',
+    campaign:     body.campaign,
+    source:       body.source,
+    sessionToken: body.pohSessionToken, // pass from client via usePoh().sessionToken
+  });
+  return Response.json({ ok: true });
+}` : ""}`,
+
+      wordpress: `<?php
+/**
+ * PoH Trust & Fraud Intelligence — WordPress Integration
+ *
+ * Add this to your theme's functions.php or a custom plugin.
+ * API Key: ${apiKey}
+ */
+
+// ── 1. Inject PoH SDK on every front-end page ─────────────────────────────────
+add_action('wp_head', function () { ?>
+  <script>
+    (function(w,d,s,k){
+      w._pohKey = k;
+      var el = d.createElement(s); el.async = true;
+      el.src = '${cdnUrl}?key=' + k;
+      d.head.appendChild(el);
+      w.poh = w.poh || { q:[], track:function(){poh.q.push(arguments)} };
+    })(window, document, 'script', '<?php echo esc_attr('${apiKey}'); ?>');
+  </script>
+<?php }, 1);
+${include_conversion_tracking ? `
+// ── 2. WooCommerce Order Tracking ─────────────────────────────────────────────
+add_action('woocommerce_thankyou', function ($order_id) {
+  $order = wc_get_order($order_id);
+  if (!$order) return;
+  $total    = $order->get_total();
+  $currency = $order->get_currency();
+  $campaign = isset($_COOKIE['poh_campaign']) ? sanitize_text_field($_COOKIE['poh_campaign']) : '';
+  $source   = isset($_COOKIE['poh_source'])   ? sanitize_text_field($_COOKIE['poh_source'])   : '';
+  ?>
+  <script>
+    if (window.poh && poh.track) {
+      poh.track('conversion', {
+        conversionId: '<?php echo esc_js($order_id); ?>',
+        value:        <?php echo esc_js($total); ?>,
+        currency:     '<?php echo esc_js($currency); ?>',
+        campaign:     '<?php echo esc_js($campaign); ?>',
+        source:       '<?php echo esc_js($source); ?>',
+      });
+    }
+  </script>
+  <?php
+}, 10, 1);` : ""}`,
+
+      shopify: `{%- comment -%}
+  PoH Trust & Fraud Intelligence — Shopify Integration
+  API Key: ${apiKey}
+  Add the first snippet to theme.liquid <head>.
+  Add the conversion snippet to checkout/order-status.liquid.
+{%- endcomment -%}
+
+{%- comment -%} === theme.liquid — paste inside <head> === {%- endcomment -%}
+<script>
+  (function(w,d,s,k){
+    w._pohKey = k;
+    var el = d.createElement(s); el.async = true;
+    el.src = '${cdnUrl}?key=' + k;
+    d.head.appendChild(el);
+    w.poh = w.poh || { q:[], track:function(){poh.q.push(arguments)} };
+  })(window, document, 'script', '${apiKey}');
+</script>
+${include_conversion_tracking ? `
+{%- comment -%} === order-status.liquid — paste at end of file === {%- endcomment -%}
+{% if first_time_accessed %}
+<script>
+  if (window.poh && poh.track) {
+    poh.track('conversion', {
+      conversionId: '{{ order.order_number }}',
+      value:        {{ checkout.total_price | money_without_currency | remove: ',' }},
+      currency:     '{{ cart.currency.iso_code }}',
+      campaign:     '{{ checkout.attributes["utm_campaign"] | default: "" }}',
+      source:       '{{ checkout.attributes["utm_source"]   | default: "" }}',
+    });
+  }
+</script>
+{% endif %}` : ""}`,
+
+      conversion_pixel: `<!-- PoH Conversion Pixel (lightweight — no full SDK required) -->
+<!-- Place ONLY on your order-confirmation / thank-you page. -->
+<script>
+(function() {
+  var key    = '${apiKey}';
+  var base   = '${apiBase}';
+
+  // Replace these values with your actual order/lead data:
+  var data = {
+    apiKey:       key,
+    conversionId: '<ORDER_ID>',        // unique order / lead ID
+    value:        0.00,                // revenue amount (e.g. 99.99)
+    currency:     'USD',
+    campaign:     '<CAMPAIGN_NAME>',
+    source:       '<UTM_SOURCE>',      // 'google', 'meta', 'email', etc.
+    sessionToken: window.__pohSession, // injected by main SDK if loaded on prior pages
+  };
+
+  var img = new Image(1, 1);
+  img.src = base + '/pixel/conversion?d=' + encodeURIComponent(JSON.stringify(data));
+  document.body.appendChild(img);
+})();
+</script>`,
+
+      gtm: `<!-- PoH Trust & Fraud Intelligence — Google Tag Manager Custom HTML Tag -->
+<!--
+  In GTM: New Tag → Custom HTML → paste this.
+  Trigger: All Pages (or your specific page trigger).
+  Tag name: PoH SDK
+-->
+<script>
+  (function(w,d,s,k){
+    w._pohKey = k;
+    var el = d.createElement(s); el.async = true;
+    el.src = '${cdnUrl}?key=' + k;
+    d.head.appendChild(el);
+    w.poh = w.poh || { q:[], track:function(){poh.q.push(arguments)} };
+  })(window, document, 'script', '${apiKey}');
+</script>
+${include_conversion_tracking ? `
+<!--
+  Conversion Tag — add a separate Custom HTML tag with this trigger:
+  Trigger: Purchase / Thank You page view
+-->
+<script>
+  poh.track('conversion', {
+    conversionId: '{{Order ID}}',       // GTM variable — your order ID data layer push
+    value:        {{Purchase Value}},   // GTM variable — revenue
+    currency:     '{{Currency Code}}',
+    campaign:     '{{utm_campaign}}',   // from URL / data layer
+    source:       '{{utm_source}}',
+  });
+</script>` : ""}`,
+    };
+
+    const snippet = snippets[stack] ?? snippets["html"];
+
+    return {
+      content: [{
+        type: "text" as const,
+        text: [
+          `# PoH SDK Integration — ${stack.toUpperCase()} Snippet`,
+          `**API Key:** \`${apiKey}\`   **Domain:** \`${domain}\``,
+          "",
+          "```" + (stack === "react" || stack === "nextjs" || stack === "javascript" ? "tsx" :
+                   stack === "wordpress" ? "php" :
+                   stack === "shopify"   ? "liquid" :
+                   stack === "html" || stack === "gtm" || stack === "conversion_pixel" ? "html" : "text"),
+          snippet,
+          "```",
+          "",
+          "## Next steps",
+          `1. **Paste** the snippet above into your ${stack === "html" ? "<head> tag" : stack === "wordpress" ? "functions.php" : stack === "shopify" ? "theme.liquid" : stack === "gtm" ? "GTM custom HTML tag" : "project"}.`,
+          "2. **Deploy** your site — sessions will start appearing in the PoH dashboard within minutes.",
+          "3. **Verify** with \`score_session\` or by checking the Sessions page in the PoH dashboard.",
+          include_conversion_tracking
+            ? "4. **Test conversions** by completing a test purchase — it will appear under Conversions in the dashboard."
+            : "4. **Add conversion tracking** — call \`generate_sdk_snippet\` again with \`include_conversion_tracking: true\` for a conversion-specific snippet.",
+          "",
+          "Need help interpreting scores? Call \`get_reason_codes\` for the full codebook.",
+        ].join("\n"),
+      }],
+    };
+  }
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
