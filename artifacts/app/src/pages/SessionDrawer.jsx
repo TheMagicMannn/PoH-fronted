@@ -10,7 +10,17 @@ import { cn } from "@/lib/utils";
 import {
   MapPin, DeviceMobile, Browsers, Fingerprint, Globe, Clock, ShieldCheck, Eye, Prohibit, X,
   UserCircle, Brain, HardDrives, WifiHigh, ClockCountdown, Pulse, Target,
+  ArrowRight, Path,
 } from "@phosphor-icons/react";
+
+function fmtDuration(ms) {
+  if (!ms || ms <= 0) return "—";
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return rem > 0 ? `${m}m ${rem}s` : `${m}m`;
+}
 
 function SignalRow({ label, value, bad }) {
   return (
@@ -82,6 +92,13 @@ export default function SessionDrawer({ sessionId, open, onClose }) {
     },
     onError: () => toast.error("Action failed"),
   });
+
+  const { data: journeyData } = useQuery({
+    queryKey: ["session-journey", sessionId],
+    queryFn: () => fetcher(`/sessions/${sessionId}/journey`),
+    enabled: !!sessionId && open,
+  });
+  const journey = journeyData?.pages ?? [];
 
   const sig = s?.signals || {};
   const hasHumanScore = s?.human_score != null;
@@ -257,6 +274,100 @@ export default function SessionDrawer({ sessionId, open, onClose }) {
                   <SignalRow label="Datacenter IP" value={yn(sig.datacenter_ip)} bad={sig.datacenter_ip} />
                   <SignalRow label="IP" value={s.ip} />
                 </div>
+              </section>
+
+              {/* Page Journey */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Path size={14} className="text-review" />
+                  <h3 className="data-label">Page Journey</h3>
+                  {journey.length > 0 && (
+                    <span className="ml-auto font-mono text-[10px] text-muted-foreground">{journey.length} page{journey.length !== 1 ? "s" : ""}</span>
+                  )}
+                </div>
+
+                {journey.length === 0 ? (
+                  <div className="rounded-lg border border-white/8 bg-white/[0.02] px-4 py-5 text-center">
+                    <Path size={20} className="mx-auto mb-2 text-slate-600" />
+                    <p className="font-mono text-xs text-slate-500">No page views recorded yet.</p>
+                    <p className="mt-1 font-mono text-[10px] text-slate-600">
+                      Page views are sent when the visitor navigates away or closes the tab.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {journey.map((pv, idx) => {
+                      const isLast = idx === journey.length - 1;
+                      const scroll = pv.scroll_depth_pct ?? 0;
+                      const scrollColor = scroll >= 75 ? "#34D399" : scroll >= 40 ? "#60A5FA" : "#6B7280";
+                      return (
+                        <div key={pv.id} className="relative">
+                          {/* Connector line */}
+                          {!isLast && (
+                            <div className="absolute left-[15px] top-[32px] bottom-[-4px] w-px bg-white/10" />
+                          )}
+                          <div className="flex items-start gap-3 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2.5 hover:bg-white/[0.04] transition-colors">
+                            {/* Step indicator */}
+                            <div className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/[0.05] font-mono text-[9px] text-slate-400 mt-0.5">
+                              {idx + 1}
+                            </div>
+
+                            <div className="flex-1 min-w-0 space-y-1.5">
+                              {/* Path + title */}
+                              <div>
+                                <p className="font-mono text-xs text-slate-100 truncate" title={pv.url}>
+                                  {pv.path || pv.url}
+                                </p>
+                                {pv.title && pv.title !== pv.path && (
+                                  <p className="font-mono text-[10px] text-slate-500 truncate">{pv.title}</p>
+                                )}
+                              </div>
+
+                              {/* Metrics row */}
+                              <div className="flex items-center gap-3 flex-wrap">
+                                {/* Time on page */}
+                                <span className="flex items-center gap-1 font-mono text-[10px] text-slate-400">
+                                  <Clock size={9} className="text-slate-600" />
+                                  {fmtDuration(pv.time_on_page_ms)}
+                                </span>
+
+                                {/* Scroll depth bar */}
+                                {pv.scroll_depth_pct != null && (
+                                  <span className="flex items-center gap-1.5 font-mono text-[10px]" style={{ color: scrollColor }}>
+                                    <span className="flex h-1.5 w-16 rounded-full overflow-hidden bg-white/10">
+                                      <span
+                                        className="h-full rounded-full transition-all"
+                                        style={{ width: `${scroll}%`, background: scrollColor }}
+                                      />
+                                    </span>
+                                    {scroll}%
+                                  </span>
+                                )}
+
+                                {/* Timestamp */}
+                                <span className="ml-auto font-mono text-[10px] text-slate-600">
+                                  {pv.entered_at
+                                    ? new Date(pv.entered_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+                                    : "—"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Total time */}
+                    {journey.length > 1 && (
+                      <div className="flex items-center justify-between rounded-md bg-white/[0.02] px-3 py-1.5 mt-1">
+                        <span className="font-mono text-[10px] text-slate-500">Total session time</span>
+                        <span className="font-mono text-[10px] text-slate-300">
+                          {fmtDuration(journey.reduce((acc, pv) => acc + (pv.time_on_page_ms ?? 0), 0))}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
 
               {/* Conversions */}

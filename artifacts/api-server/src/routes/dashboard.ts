@@ -6,7 +6,7 @@ import { db } from "@workspace/db";
 import {
   usersTable, workspacesTable, sitesTable, sessionsTable, conversionsTable,
   rulesTable, investigationsTable, alertsTable, integrationsTable,
-  auditLogsTable, fraudClustersTable,
+  auditLogsTable, fraudClustersTable, pageViewsTable,
 } from "@workspace/db";
 import { eq, and, gte, desc, count, sql } from "drizzle-orm";
 import { requireAuth, requireRole, publicUser } from "../lib/auth.js";
@@ -1346,6 +1346,78 @@ router.post("/collect", async (req, res) => {
 });
 
 // ---------- Meta ----------
+// ---------- Page Journey ----------
+
+router.post("/pageview", async (req, res) => {
+  try {
+    const body = req.body as {
+      sdk_key?: string;
+      session_id?: string;
+      url?: string;
+      path?: string;
+      title?: string;
+      referrer?: string;
+      time_on_page_ms?: number;
+      scroll_depth_pct?: number;
+      entered_at?: string;
+    };
+
+    if (!body.sdk_key) { res.status(400).json({ detail: "sdk_key required" }); return; }
+    if (!body.session_id || !body.url) { res.status(400).json({ detail: "session_id and url required" }); return; }
+
+    const [site] = await db
+      .select({ id: sitesTable.id, workspaceId: sitesTable.workspaceId })
+      .from(sitesTable)
+      .where(eq(sitesTable.sdkKey, body.sdk_key))
+      .limit(1);
+    if (!site) { res.status(401).json({ detail: "Invalid SDK key" }); return; }
+
+    const enteredAt = body.entered_at ? new Date(body.entered_at) : new Date();
+
+    await db.insert(pageViewsTable).values({
+      id:             randomUUID(),
+      sessionId:      body.session_id,
+      workspaceId:    site.workspaceId,
+      url:            body.url,
+      path:           body.path ?? (() => { try { return new URL(body.url!).pathname; } catch { return body.url!; } })(),
+      title:          body.title ?? null,
+      referrer:       body.referrer ?? null,
+      timeOnPageMs:   body.time_on_page_ms ?? null,
+      scrollDepthPct: body.scroll_depth_pct ?? null,
+      enteredAt,
+      exitedAt:       body.time_on_page_ms != null
+        ? new Date(enteredAt.getTime() + body.time_on_page_ms)
+        : null,
+    });
+
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ detail: "Failed to record pageview" });
+  }
+});
+
+router.get("/sessions/:sid/journey", requireAuth, async (req, res) => {
+  try {
+    const wid = wsId(req);
+    const [session] = await db
+      .select({ sessionId: sessionsTable.sessionId })
+      .from(sessionsTable)
+      .where(and(eq(sessionsTable.id, req.params.sid!), eq(sessionsTable.workspaceId, wid)))
+      .limit(1);
+    if (!session) { res.status(404).json({ detail: "Session not found" }); return; }
+
+    const pages = await db
+      .select()
+      .from(pageViewsTable)
+      .where(eq(pageViewsTable.sessionId, session.sessionId))
+      .orderBy(pageViewsTable.enteredAt);
+
+    res.json({ pages });
+  } catch {
+    res.status(500).json({ detail: "Failed to load journey" });
+  }
+});
+
 router.get("/meta/reason-codes", (_req, res) => {
   res.json({ reason_codes: Object.entries(REASON_CODES).map(([code, v]) => ({ code, ...v })) });
 });

@@ -2,6 +2,7 @@
  * PoH Browser SDK — Human Authenticity Intelligence
  * Auto-bundled IIFE, served at /api/poh.js
  * Collects device signals + behavioral biometrics for the Human Authenticity Engine.
+ * Also tracks full page journey (every URL visited, time on page, scroll depth).
  */
 
 /* ---------- helpers ---------- */
@@ -39,24 +40,17 @@ function automationMarkers(): string[] {
   const w = window as Record<string, unknown>;
   const d = document as Record<string, unknown>;
 
-  // Selenium / WebDriver
   if (safe(() => !!w["__webdriver_evaluate"], false))     markers.push("__webdriver_evaluate");
   if (safe(() => !!w["__selenium_evaluate"], false))      markers.push("__selenium_evaluate");
   if (safe(() => !!w["__selenium_unwrapped"], false))     markers.push("__selenium_unwrapped");
   if (safe(() => !!w["_selenium"], false))                markers.push("_selenium");
   if (safe(() => !!w["_Selenium_IDE_Recorder"], false))   markers.push("selenium_ide");
   if (safe(() => !!w["selenium"], false))                 markers.push("selenium");
-
-  // Phantom / Nightmare
   if (safe(() => !!w["_phantom"], false))                 markers.push("phantom");
   if (safe(() => !!w["callPhantom"], false))              markers.push("callPhantom");
   if (safe(() => !!w["__nightmare"], false))              markers.push("nightmare");
-
-  // Chrome DevTools Protocol
   const hasCdc = safe(() => Object.keys(d).some((k) => k.startsWith("$cdc_")), false);
   if (hasCdc) markers.push("cdp_runtime");
-
-  // DOM automation controller
   if (safe(() => !!w["domAutomation"], false))            markers.push("domAutomation");
   if (safe(() => !!w["domAutomationController"], false))  markers.push("domAutomationController");
 
@@ -72,21 +66,13 @@ function headlessChecks(): { score: number; flags: string[]; automation_markers:
   if (safe(() => nav.plugins.length === 0, false))                          { flags.push("no_plugins"); score += 10; }
   if (safe(() => window.outerWidth === 0, false))                           { flags.push("zero_outer_size"); score += 20; }
   if (safe(() => !nav.languages || nav.languages.length === 0, false))      { flags.push("no_languages"); score += 10; }
-
-  // Headless Chrome: outerHeight === innerHeight (no chrome UI)
   if (safe(() => window.outerHeight > 0 && window.outerHeight === window.innerHeight, false)) {
     flags.push("no_browser_chrome"); score += 10;
   }
-
-  // Permission probe: headless Chrome reports "default" for notification even when none asked
   const notifPermission = safe(() => (Notification as { permission?: string }).permission, undefined);
   if (notifPermission === "denied") { flags.push("notification_denied"); score += 5; }
 
-  return {
-    score: Math.min(100, score),
-    flags,
-    automation_markers: automationMarkers(),
-  };
+  return { score: Math.min(100, score), flags, automation_markers: automationMarkers() };
 }
 
 function deviceSignals() {
@@ -122,14 +108,10 @@ function directionEntropy(pts: Array<[number, number]>): number {
   for (let i = 1; i < pts.length; i++) {
     const dx = pts[i]![0] - pts[i - 1]![0];
     const dy = pts[i]![1] - pts[i - 1]![1];
-    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-      angles.push(Math.atan2(dy, dx));
-    }
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) angles.push(Math.atan2(dy, dx));
   }
   if (angles.length < 2) return 0;
-  // Normalise to 0-1: humans have high directional variance
-  const sd = stddev(angles);
-  return Math.min(1, sd / Math.PI);
+  return Math.min(1, stddev(angles) / Math.PI);
 }
 
 /* ---------- behavior tracker ---------- */
@@ -146,7 +128,6 @@ class BehaviorTracker {
   private maxScrollY = 0;
   private idlePeriods = 0;
 
-  // Enhanced biometric arrays
   private mousePts: Array<[number, number]> = [];
   private mouseSampleTimer: ReturnType<typeof setInterval> | null = null;
   private clickTs: number[] = [];
@@ -190,12 +171,8 @@ class BehaviorTracker {
     window.addEventListener("focus", this.track(() => this.focusBlurCount++), { passive: true });
     window.addEventListener("blur", this.track(() => this.focusBlurCount++), { passive: true });
 
-    // Sample mouse position every 100ms for path entropy
-    this.mouseSampleTimer = setInterval(() => {
-      // We track via mousemove instead — see mousemove handler below
-    }, 100);
+    this.mouseSampleTimer = setInterval(() => {}, 100);
 
-    // Override mousemove to also sample positions (every ~10th event)
     let moveSample = 0;
     document.addEventListener("mousemove", (e: Event) => {
       const me = e as MouseEvent;
@@ -208,19 +185,13 @@ class BehaviorTracker {
 
   collect() {
     if (this.mouseSampleTimer) { clearInterval(this.mouseSampleTimer); this.mouseSampleTimer = null; }
-
     const duration = Date.now() - this.startMs;
     const cadence = this.keydowns.filter((k) => k.up).map((k) => k.up! - k.down).filter((d) => d > 0 && d < 2000);
     const scrollDepth = Math.round((this.maxScrollY / Math.max(1, document.documentElement.scrollHeight - window.innerHeight)) * 100);
-
-    // Compute biometric features
     const mousePathEntropy = directionEntropy(this.mousePts);
-
     const clickIntervals = this.clickTs.slice(1).map((t, i) => t - this.clickTs[i]!).filter((d) => d > 0);
     const clickIntervalEntropy = clickIntervals.length >= 2 ? Math.round(stddev(clickIntervals)) : undefined;
-
     const interKeyVariance = cadence.length >= 3 ? Math.round(stddev(cadence)) : undefined;
-
     const scrollIntervals = this.scrollTs.slice(1).map((t, i) => t - this.scrollTs[i]!).filter((d) => d > 0 && d < 5000);
     const scrollVariance = scrollIntervals.length >= 3 ? Math.round(stddev(scrollIntervals) * 10) / 10 : undefined;
 
@@ -236,12 +207,151 @@ class BehaviorTracker {
       first_interaction_ms: this.firstInteractionMs ?? undefined,
       scroll_depth_percent: Math.min(100, scrollDepth),
       avg_keystroke_ms: cadence.length ? Math.round(cadence.reduce((a, b) => a + b, 0) / cadence.length) : undefined,
-      // Biometric features for Human Authenticity Engine
       mouse_path_entropy: Math.round(mousePathEntropy * 1000) / 1000,
       click_interval_entropy: clickIntervalEntropy,
       inter_key_variance: interKeyVariance,
       scroll_variance: scrollVariance,
     };
+  }
+}
+
+/* ---------- page view tracker ---------- */
+interface PageState {
+  url: string;
+  path: string;
+  title: string;
+  referrer: string;
+  enteredAt: number;
+  maxScrollDepth: number;
+}
+
+class PageViewTracker {
+  private apiBase: string;
+  private sdkKey: string;
+  private sessionId: string;
+  private current: PageState | null = null;
+  private scrollHandler: (() => void) | null = null;
+  private flushed = new Set<string>(); // guard against double-send for same enteredAt
+
+  constructor(apiBase: string, sdkKey: string, sessionId: string) {
+    this.apiBase = apiBase;
+    this.sdkKey = sdkKey;
+    this.sessionId = sessionId;
+  }
+
+  /** Call once on SDK init — records the landing page and hooks navigation events */
+  start() {
+    this.beginPage();
+    this.hookNavigation();
+
+    // Flush when tab goes hidden (covers most tab-close / navigate-away cases)
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") this.flush();
+    });
+    // Flush on pagehide (mobile Safari, bfcache)
+    window.addEventListener("pagehide", () => this.flush());
+  }
+
+  private beginPage() {
+    // Remove old scroll listener
+    if (this.scrollHandler) {
+      window.removeEventListener("scroll", this.scrollHandler);
+    }
+
+    const page: PageState = {
+      url: location.href,
+      path: location.pathname + location.search,
+      title: document.title,
+      referrer: document.referrer || "",
+      enteredAt: Date.now(),
+      maxScrollDepth: 0,
+    };
+    this.current = page;
+
+    // Track scroll depth for this page
+    this.scrollHandler = () => {
+      const pct = Math.round(
+        (window.scrollY / Math.max(1, document.documentElement.scrollHeight - window.innerHeight)) * 100
+      );
+      page.maxScrollDepth = Math.max(page.maxScrollDepth, Math.min(100, pct));
+    };
+    window.addEventListener("scroll", this.scrollHandler, { passive: true });
+
+    // Update title after a tick (SPA frameworks set it asynchronously)
+    setTimeout(() => { if (this.current === page) page.title = document.title; }, 300);
+  }
+
+  flush() {
+    const page = this.current;
+    if (!page) return;
+
+    // Deduplicate: same page, same entry time
+    const key = `${page.url}:${page.enteredAt}`;
+    if (this.flushed.has(key)) return;
+    this.flushed.add(key);
+
+    this.current = null;
+    if (this.scrollHandler) {
+      window.removeEventListener("scroll", this.scrollHandler);
+      this.scrollHandler = null;
+    }
+
+    const timeOnPageMs = Date.now() - page.enteredAt;
+    const payload = JSON.stringify({
+      sdk_key:          this.sdkKey,
+      session_id:       this.sessionId,
+      url:              page.url,
+      path:             page.path,
+      title:            page.title || document.title,
+      referrer:         page.referrer,
+      time_on_page_ms:  timeOnPageMs,
+      scroll_depth_pct: page.maxScrollDepth,
+      entered_at:       new Date(page.enteredAt).toISOString(),
+    });
+
+    // sendBeacon survives page unload; fall back to keepalive fetch
+    const endpoint = `${this.apiBase}/api/pageview`;
+    const sent = safe(
+      () => navigator.sendBeacon(endpoint, new Blob([payload], { type: "application/json" })),
+      false
+    );
+    if (!sent) {
+      safe(() => {
+        fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true })
+          .catch(() => {});
+        return true;
+      }, false);
+    }
+  }
+
+  /** Navigate to a new page within the same session (SPA route change) */
+  navigate() {
+    this.flush();
+    this.beginPage();
+  }
+
+  private hookNavigation() {
+    // Intercept SPA pushState / replaceState
+    const origPush    = history.pushState.bind(history);
+    const origReplace = history.replaceState.bind(history);
+
+    history.pushState = (...args: Parameters<typeof history.pushState>) => {
+      this.flush();
+      origPush(...args);
+      // Small delay so the framework can update document.title
+      setTimeout(() => this.beginPage(), 80);
+    };
+
+    history.replaceState = (...args: Parameters<typeof history.replaceState>) => {
+      origReplace(...args);
+      // replaceState is usually URL-only changes (query params); don't count as new page
+    };
+
+    // Browser back / forward
+    window.addEventListener("popstate", () => {
+      this.flush();
+      setTimeout(() => this.beginPage(), 80);
+    });
   }
 }
 
@@ -270,6 +380,7 @@ class PoH {
   private sdkKey: string;
   private sessionId: string;
   private behavior: BehaviorTracker;
+  private pageViews: PageViewTracker;
   private sent = false;
 
   constructor(apiBase: string, sdkKey: string) {
@@ -278,6 +389,8 @@ class PoH {
     this.sessionId = getOrCreateSessionId();
     this.behavior = new BehaviorTracker();
     this.behavior.attach();
+    this.pageViews = new PageViewTracker(this.apiBase, this.sdkKey, this.sessionId);
+    this.pageViews.start();
   }
 
   private async sendCollect(extra: Record<string, unknown> = {}) {
