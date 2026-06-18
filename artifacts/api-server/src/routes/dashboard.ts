@@ -404,16 +404,27 @@ router.post("/sessions/:sid/action", requireAuth, async (req, res) => {
       .limit(1);
     if (!session) { res.status(404).json({ detail: "Session not found" }); return; }
 
-    const mapping: Record<string, string> = { block: "block", review: "review", trust: "observe", observe: "observe" };
-    const action = mapping[req.body.action] ?? req.body.action;
+    const actionMap: Record<string, string> = { block: "block", review: "review", trust: "trust", observe: "observe" };
+    const action = actionMap[req.body.action] ?? req.body.action;
+
+    // Sync classification so stats (wasted spend, fraud rate, trend chart) reflect the override
+    const classificationOverride =
+      action === "trust"  ? "trusted"    :
+      action === "block"  ? "fraudulent" :
+      null; // review / observe — keep engine classification
 
     await db
       .update(sessionsTable)
-      .set({ action, manualOverride: true, updatedAt: new Date() })
+      .set({
+        action,
+        classification: classificationOverride ?? session.classification,
+        manualOverride: true,
+        updatedAt: new Date(),
+      })
       .where(and(eq(sessionsTable.workspaceId, wid), eq(sessionsTable.id, String(req.params["sid"]))));
 
     await logAudit(wid, req.user!.name, "session.action", session.sessionId,
-      `Manually set action to '${action}'${req.body.note ? `: ${req.body.note}` : ""}`);
+      `Manually set action to '${action}'${classificationOverride ? ` (classification → ${classificationOverride})` : ""}${req.body.note ? `: ${req.body.note}` : ""}`);
     res.json({ ok: true, action });
   } catch {
     res.status(500).json({ detail: "Failed to update session" });
