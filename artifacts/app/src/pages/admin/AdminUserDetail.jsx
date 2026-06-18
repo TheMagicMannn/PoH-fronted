@@ -4,10 +4,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api, { fetcher } from "@/lib/api";
 import { fmtDateTime } from "@/lib/format";
 import { Spinner, Card } from "@/components/common/Card";
-import { ArrowLeft, LockKey, UserCircle, Buildings, ListBullets, Trash } from "@phosphor-icons/react";
+import { ArrowLeft, LockKey, UserCircle, Buildings, ListBullets, Trash, Crown } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
-const ROLES = ["viewer", "analyst", "admin", "owner"];
+const ROLES = ["viewer", "analyst", "admin"];
 const ROLE_COLOR = { owner: "text-fraudulent", admin: "text-suspicious", analyst: "text-blue-400", viewer: "text-slate-400" };
 
 export default function AdminUserDetail() {
@@ -45,6 +45,12 @@ export default function AdminUserDetail() {
     onError: (e) => toast.error(e?.response?.data?.detail ?? "Failed"),
   });
 
+  const promoteToOwner = useMutation({
+    mutationFn: () => api.post(`/admin/users/${id}/promote-to-owner`),
+    onSuccess: () => { toast.success("User promoted to owner"); qc.invalidateQueries({ queryKey: ["admin-user", id] }); },
+    onError: (e) => toast.error(e?.response?.data?.detail ?? "Failed"),
+  });
+
   if (isLoading) return <Spinner />;
   if (!data) return <p className="text-muted-foreground p-8">User not found</p>;
 
@@ -68,11 +74,21 @@ export default function AdminUserDetail() {
               <p className={`font-mono text-xs capitalize mt-0.5 ${ROLE_COLOR[user.role] ?? "text-slate-400"}`}>{user.role}</p>
             </div>
           </div>
-          <button
-            onClick={() => { if (confirm(`Delete user ${user.email}? This cannot be undone.`)) deleteUser.mutate(); }}
-            className="flex items-center gap-1.5 rounded border border-fraudulent/25 bg-fraudulent/10 px-3 py-1.5 text-xs font-medium text-fraudulent hover:bg-fraudulent/20 transition-colors">
-            <Trash size={13} /> Delete user
-          </button>
+          <div className="flex items-center gap-2">
+            {user.role !== "owner" && (
+              <button
+                onClick={() => { if (confirm(`Promote ${user.email} to OWNER? This grants full platform access and cannot be easily undone.`)) promoteToOwner.mutate(); }}
+                disabled={promoteToOwner.isPending}
+                className="flex items-center gap-1.5 rounded border border-suspicious/25 bg-suspicious/10 px-3 py-1.5 text-xs font-medium text-suspicious hover:bg-suspicious/20 transition-colors disabled:opacity-50">
+                <Crown size={13} /> Promote to owner
+              </button>
+            )}
+            <button
+              onClick={() => { if (confirm(`Delete user ${user.email}? This cannot be undone.`)) deleteUser.mutate(); }}
+              className="flex items-center gap-1.5 rounded border border-fraudulent/25 bg-fraudulent/10 px-3 py-1.5 text-xs font-medium text-fraudulent hover:bg-fraudulent/20 transition-colors">
+              <Trash size={13} /> Delete user
+            </button>
+          </div>
         </div>
       </div>
 

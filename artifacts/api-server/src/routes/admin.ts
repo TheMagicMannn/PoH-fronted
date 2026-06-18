@@ -213,8 +213,8 @@ router.patch("/admin/users/:id", requireRole("owner"), async (req, res) => {
     const { role } = req.body as { role?: string };
 
     if (!role) { res.status(400).json({ detail: "role is required" }); return; }
-    const VALID = ["viewer", "analyst", "admin", "owner"];
-    if (!VALID.includes(role)) { res.status(400).json({ detail: "Invalid role" }); return; }
+    const VALID = ["viewer", "analyst", "admin"];
+    if (!VALID.includes(role)) { res.status(400).json({ detail: "Invalid role. Use /promote-to-owner to grant owner access." }); return; }
 
     const [user] = await db.select({ email: usersTable.email, workspaceId: usersTable.workspaceId }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
     if (!user) { res.status(404).json({ detail: "User not found" }); return; }
@@ -235,6 +235,33 @@ router.patch("/admin/users/:id", requireRole("owner"), async (req, res) => {
     res.json({ ok: true });
   } catch {
     res.status(500).json({ detail: "Failed to update user" });
+  }
+});
+
+router.post("/admin/users/:id/promote-to-owner", requireRole("owner"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (id === req.user!.id) { res.status(400).json({ detail: "You are already the owner" }); return; }
+
+    const [user] = await db.select({ email: usersTable.email, workspaceId: usersTable.workspaceId }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+    if (!user) { res.status(404).json({ detail: "User not found" }); return; }
+
+    await db.update(usersTable).set({ role: "owner" }).where(eq(usersTable.id, id));
+
+    if (user.workspaceId) {
+      await db.insert(auditLogsTable).values({
+        id: randomUUID(),
+        workspaceId: user.workspaceId,
+        userName: `Admin (${req.user!.email})`,
+        action: "admin_promoted_to_owner",
+        target: user.email,
+        details: "Promoted to owner by platform admin",
+      });
+    }
+
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ detail: "Failed to promote user" });
   }
 });
 

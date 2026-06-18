@@ -6,7 +6,7 @@ import { fmtNum, fmtDateTime } from "@/lib/format";
 import { Spinner, Card } from "@/components/common/Card";
 import { MagnifyingGlass, ArrowRight, UserCircle } from "@phosphor-icons/react";
 
-const ROLES = ["viewer", "analyst", "admin", "owner"];
+const ROLES = ["viewer", "analyst", "admin", "owner"]; // owner shown for filter only, not assignment
 const ROLE_COLOR = { owner: "text-fraudulent border-fraudulent/30 bg-fraudulent/10", admin: "text-suspicious border-suspicious/30 bg-suspicious/10", analyst: "text-blue-400 border-blue-400/30 bg-blue-400/10", viewer: "text-slate-400 border-white/10 bg-white/5" };
 
 export default function AdminUsers() {

@@ -72,11 +72,11 @@ router.post("/register", async (req, res) => {
       name,
       email: normalizedEmail,
       passwordHash: hashPassword(password),
-      role: "owner",
+      role: "admin",
       workspaceId: wsId,
     });
 
-    const user = { id: userId, name, email: normalizedEmail, role: "owner", workspaceId: wsId };
+    const user = { id: userId, name, email: normalizedEmail, role: "admin", workspaceId: wsId };
     setAuthCookies(res, userId, normalizedEmail);
     res.status(201).json(publicUser(user));
   } catch (err) {
