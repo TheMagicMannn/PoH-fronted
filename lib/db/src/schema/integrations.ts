@@ -5,6 +5,8 @@ import { z } from "zod/v4";
 export const integrationsTable = pgTable("integrations", {
   id: text("id").primaryKey(),
   workspaceId: text("workspace_id").notNull(),
+  // null = workspace-level integration; set to a site id for per-domain config
+  siteId: text("site_id"),
   provider: text("provider").notNull(),
   name: text("name").notNull(),
   status: text("status").notNull().default("disconnected"),

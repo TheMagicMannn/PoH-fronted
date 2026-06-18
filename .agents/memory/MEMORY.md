@@ -5,3 +5,4 @@
 - [Engine implementation pattern](engine-pattern.md) — each engine: DB schema → pure scorer → dashboard.ts (reason codes + collect + overview + seed) → frontend (Overview panel + SessionDrawer section).
 - [API lib default export](api-lib-export.md) — api.js exports axios instance as default, fetcher as named; always use `import api from "@/lib/api"` not `{ api }`.
 - [TanStack Query v5 patterns](tanstack-query-v5.md) — onSuccess removed from useQuery in v5; use useEffect watching data instead.
+- [DB dist rebuild for project references](db-dist-rebuild.md) — after schema column changes run `cd lib/db && npx tsc --build` to regenerate dist/*.d.ts; api-server uses TS project references and reads compiled types not source.

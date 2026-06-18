@@ -74,6 +74,24 @@ export const sessionsTable = pgTable("sessions", {
   deviceRiskTier: text("device_risk_tier"),
   deviceSessionCount: integer("device_session_count"),
   deviceReasonCodes: jsonb("device_reason_codes").$type<string[]>().default([]),
+  // Trust Intelligence Engine (TIE) — composite 0-1000 scorer
+  tieTrustScore: real("tie_trust_score"),          // 0–1000 composite trust score
+  tieHumanScore: real("tie_human_score"),          // 0–100 human module (20%)
+  tieBehaviorScore: real("tie_behavior_score"),    // 0–100 behavioral module (15%)
+  tieDeviceScore: real("tie_device_score"),        // 0–100 device module (15%)
+  tieNetworkScore: real("tie_network_score"),      // 0–100 network module (10%)
+  tieIdentityScore: real("tie_identity_score"),    // 0–100 identity module (10%)
+  tieTrafficScore: real("tie_traffic_score"),      // 0–100 traffic module (10%)
+  tieGraphScore: real("tie_graph_score"),          // 0–100 graph/relationship module (10%)
+  tieFraudInverseScore: real("tie_fraud_inverse_score"), // 0–100 fraud inverse (10%)
+  tieFraudScore: real("tie_fraud_score"),          // 0–100 fraud probability
+  tieConfidence: real("tie_confidence"),           // 0–1
+  tieRiskTier: text("tie_risk_tier"),
+  tieDecision: text("tie_decision"),
+  tieReasonCodes: jsonb("tie_reason_codes").$type<string[]>().default([]),
+  tiePositiveSignals: jsonb("tie_positive_signals").$type<string[]>().default([]),
+  tieNegativeSignals: jsonb("tie_negative_signals").$type<string[]>().default([]),
+  //
   manualOverride: boolean("manual_override").default(false),
   reasonCodes: jsonb("reason_codes").$type<string[]>().default([]),
   cost: real("cost").default(0),

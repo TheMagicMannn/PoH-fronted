@@ -15,6 +15,7 @@ import { scoreHumanAuthenticity } from "../lib/humanScorer.js";
 import { scoreTrafficIntelligence } from "../lib/trafficScorer.js";
 import { scoreRevenueProtection } from "../lib/revenueScorer.js";
 import { scoreDeviceIntelligence } from "../lib/deviceScorer.js";
+import { scoreTrustIntelligence } from "../lib/tieScorer.js";
 
 const router = Router();
 
@@ -766,10 +767,16 @@ const PROVIDER_METRICS: Record<string, string> = {
 
 router.get("/integrations", requireAuth, async (req, res) => {
   try {
+    const wid = wsId(req);
+    const siteId = req.query["site_id"] as string | undefined;
     const items = await db
       .select()
       .from(integrationsTable)
-      .where(eq(integrationsTable.workspaceId, wsId(req)));
+      .where(
+        siteId
+          ? and(eq(integrationsTable.workspaceId, wid), eq(integrationsTable.siteId, siteId))
+          : and(eq(integrationsTable.workspaceId, wid), sql`${integrationsTable.siteId} IS NULL`)
+      );
     res.json({ integrations: items });
   } catch {
     res.status(500).json({ detail: "Failed to load integrations" });
@@ -780,32 +787,43 @@ router.post("/integrations/:provider/connect", requireRole("admin"), async (req,
   try {
     const wid = wsId(req);
     const provider = String(req.params["provider"]);
+    const siteId: string | null = (req.body as { site_id?: string }).site_id ?? null;
     const now = new Date();
+
     const [existing] = await db
       .select()
       .from(integrationsTable)
-      .where(and(eq(integrationsTable.workspaceId, wid), eq(integrationsTable.provider, provider!)))
+      .where(
+        siteId
+          ? and(eq(integrationsTable.workspaceId, wid), eq(integrationsTable.provider, provider), eq(integrationsTable.siteId, siteId))
+          : and(eq(integrationsTable.workspaceId, wid), eq(integrationsTable.provider, provider), sql`${integrationsTable.siteId} IS NULL`)
+      )
       .limit(1);
 
     const payload = {
       status: "connected", connectedAt: now, lastSync: now,
-      metric: PROVIDER_METRICS[provider!] ?? "Connected", config: { demo: true },
+      metric: PROVIDER_METRICS[provider] ?? "Connected", config: { demo: true },
     };
 
     if (existing) {
-      await db.update(integrationsTable).set(payload)
-        .where(and(eq(integrationsTable.workspaceId, wid), eq(integrationsTable.provider, provider!)));
+      await db.update(integrationsTable).set(payload).where(eq(integrationsTable.id, existing.id));
     } else {
       await db.insert(integrationsTable).values({
-        id: randomUUID(), workspaceId: wid, provider: provider!,
-        name: PROVIDER_NAMES[provider!] ?? provider!, ...payload,
+        id: randomUUID(), workspaceId: wid, siteId: siteId ?? null,
+        provider, name: PROVIDER_NAMES[provider] ?? provider, ...payload,
       });
     }
 
-    await logAudit(wid, req.user!.name, "integration.connect", PROVIDER_NAMES[provider!] ?? provider!, "Connected integration");
+    const label = siteId ? `${PROVIDER_NAMES[provider] ?? provider} (domain)` : PROVIDER_NAMES[provider] ?? provider;
+    await logAudit(wid, req.user!.name, "integration.connect", label, "Connected integration");
+
     const [updated] = await db
       .select().from(integrationsTable)
-      .where(and(eq(integrationsTable.workspaceId, wid), eq(integrationsTable.provider, provider!)))
+      .where(existing ? eq(integrationsTable.id, existing.id) : and(
+        eq(integrationsTable.workspaceId, wid),
+        eq(integrationsTable.provider, provider),
+        siteId ? eq(integrationsTable.siteId, siteId) : sql`${integrationsTable.siteId} IS NULL`
+      ))
       .limit(1);
     res.json(updated);
   } catch {
@@ -817,15 +835,25 @@ router.post("/integrations/:provider/disconnect", requireRole("admin"), async (r
   try {
     const wid = wsId(req);
     const provider = String(req.params["provider"]);
+    const siteId: string | null = (req.body as { site_id?: string }).site_id ?? null;
+
     await db.update(integrationsTable)
       .set({ status: "disconnected", connectedAt: null, lastSync: null })
-      .where(and(eq(integrationsTable.workspaceId, wid), eq(integrationsTable.provider, provider!)));
-    await logAudit(wid, req.user!.name, "integration.disconnect", PROVIDER_NAMES[provider!] ?? provider!, "Disconnected integration");
+      .where(
+        siteId
+          ? and(eq(integrationsTable.workspaceId, wid), eq(integrationsTable.provider, provider), eq(integrationsTable.siteId, siteId))
+          : and(eq(integrationsTable.workspaceId, wid), eq(integrationsTable.provider, provider), sql`${integrationsTable.siteId} IS NULL`)
+      );
+    await logAudit(wid, req.user!.name, "integration.disconnect", PROVIDER_NAMES[provider] ?? provider, "Disconnected integration");
     const [updated] = await db
       .select().from(integrationsTable)
-      .where(and(eq(integrationsTable.workspaceId, wid), eq(integrationsTable.provider, provider!)))
+      .where(
+        siteId
+          ? and(eq(integrationsTable.workspaceId, wid), eq(integrationsTable.provider, provider), eq(integrationsTable.siteId, siteId))
+          : and(eq(integrationsTable.workspaceId, wid), eq(integrationsTable.provider, provider), sql`${integrationsTable.siteId} IS NULL`)
+      )
       .limit(1);
-    res.json(updated);
+    res.json(updated ?? { provider, status: "disconnected" });
   } catch {
     res.status(500).json({ detail: "Failed to disconnect integration" });
   }
@@ -1248,6 +1276,39 @@ router.post("/demo/seed", requireRole("admin"), async (req, res) => {
             deviceReasonCodes: isFraud ? ["device_fraud_history", "high_device_velocity"] : isSuspicious ? ["elevated_device_velocity"] : [],
           };
         })(),
+        // Trust Intelligence Engine (TIE) composite scores
+        ...((): object => {
+          const tieHuman = isFraud ? Math.round(5 + Math.random() * 25) : isSuspicious ? Math.round(38 + Math.random() * 22) : Math.round(72 + Math.random() * 23);
+          const tieBehavior = Math.round(Math.max(0, Math.min(100, tieHuman + (Math.random() * 16 - 8))));
+          const tieDevice = isFraud ? Math.round(5 + Math.random() * 28) : isSuspicious ? Math.round(32 + Math.random() * 25) : Math.round(65 + Math.random() * 28);
+          const tieNetwork = isFraud ? Math.round(8 + Math.random() * 25) : isSuspicious ? Math.round(35 + Math.random() * 22) : Math.round(68 + Math.random() * 27);
+          const tieIdentity = isFraud ? Math.round(10 + Math.random() * 22) : isSuspicious ? Math.round(38 + Math.random() * 20) : Math.round(70 + Math.random() * 24);
+          const tieTraffic = isFraud ? Math.round(8 + Math.random() * 22) : isSuspicious ? Math.round(36 + Math.random() * 20) : Math.round(65 + Math.random() * 28);
+          const tieGraph = isFraud ? Math.round(5 + Math.random() * 28) : isSuspicious ? Math.round(30 + Math.random() * 25) : Math.round(62 + Math.random() * 30);
+          const tieFraud = isFraud ? Math.round(65 + Math.random() * 30) : isSuspicious ? Math.round(30 + Math.random() * 28) : Math.round(5 + Math.random() * 20);
+          const tieFraudInverse = Math.round(100 - tieFraud);
+          const rawScore = tieHuman * 0.20 + tieBehavior * 0.15 + tieDevice * 0.15 + tieNetwork * 0.10 + tieIdentity * 0.10 + tieTraffic * 0.10 + tieGraph * 0.10 + tieFraudInverse * 0.10;
+          const tieTrust = Math.min(1000, Math.max(0, Math.round(rawScore * 10)));
+          const tierLabel = tieTrust >= 900 ? "elite_trust" : tieTrust >= 800 ? "trusted" : tieTrust >= 700 ? "verified" : tieTrust >= 600 ? "low_risk" : tieTrust >= 500 ? "neutral" : tieTrust >= 400 ? "suspicious" : tieTrust >= 300 ? "high_risk" : "fraudulent";
+          const tieDecision = tieTrust < 400 || tieFraud >= 80 ? (tieFraud >= 90 ? "quarantine" : "block") : tieTrust < 550 ? "review" : tieTrust < 700 ? "step_up" : tieTrust < 850 ? "allow_and_monitor" : "allow";
+          const posSignals = tieHuman >= 75 ? ["Strong human authenticity signals"] : [];
+          if (tieDevice >= 75) posSignals.push("Device fingerprint is stable and clean");
+          if (tieNetwork >= 75) posSignals.push("IP and network reputation is trusted");
+          const negSignals = tieHuman < 40 ? ["Low human authenticity score"] : [];
+          if (tieNetwork < 40) negSignals.push(isFraud ? "Traffic originating from datacenter or hosting IP" : "Network risk indicators detected");
+          if (tieFraud >= 65) negSignals.push("Historical fraud patterns on this device");
+          return {
+            tieTrustScore: tieTrust, tieHumanScore: tieHuman, tieBehaviorScore: tieBehavior,
+            tieDeviceScore: tieDevice, tieNetworkScore: tieNetwork, tieIdentityScore: tieIdentity,
+            tieTrafficScore: tieTraffic, tieGraphScore: tieGraph, tieFraudInverseScore: tieFraudInverse,
+            tieFraudScore: tieFraud, tieConfidence: Math.round((0.65 + Math.random() * 0.3) * 100) / 100,
+            tieRiskTier: tierLabel, tieDecision: tieDecision,
+            tieReasonCodes: isFraud ? ["tie_low_trust_composite", "tie_high_fraud_probability", "tie_network_risk"] : isSuspicious ? ["tie_behavioral_anomaly", "tie_network_risk"] : ["tie_high_trust_composite"],
+            tiePositiveSignals: posSignals, tieNegativeSignals: negSignals,
+            trustScore: Math.round(tieTrust / 10),
+            fraudScore: tieFraud,
+          };
+        })(),
         startedAt,
       });
 
@@ -1397,6 +1458,34 @@ router.post("/collect", async (req, res) => {
       ...deviceResult.reasonCodes,
     ])];
 
+    // --- Trust Intelligence Engine (TIE) — composite 0–1000 scorer ---
+    const tieResult = scoreTrustIntelligence({
+      humanScore: humanResult.humanScore,
+      behaviorScore: humanResult.behaviorScore,
+      browserIntegrityScore: humanResult.browserIntegrityScore,
+      deviceConsistencyScore: humanResult.deviceConsistencyScore,
+      networkScore: humanResult.networkScore,
+      historicalScore: humanResult.historicalScore,
+      trafficQualityScore: trafficResult.trafficQualityScore,
+      trafficFraudScore: trafficResult.trafficFraudScore,
+      trafficCampaignScore: trafficResult.trafficCampaignScore,
+      revenueProtectionScore: revenueResult.revenueProtectionScore,
+      networkTrustScore: revenueResult.networkTrustScore,
+      identitySignalsScore: revenueResult.identitySignalsScore,
+      sessionIntegrityScore: revenueResult.sessionIntegrityScore,
+      deviceIntelScore: deviceResult.deviceIntelScore,
+      deviceVelocityScore: deviceResult.deviceVelocityScore,
+      deviceFraudRateScore: deviceResult.deviceFraudRateScore,
+      deviceSpreadScore: deviceResult.deviceSpreadScore,
+      existingFraudScore: fraudScore,
+      confidence: humanResult.humanConfidence,
+      allReasonCodes: reasonCodes,
+    });
+
+    // Update composite trust/fraud from TIE
+    const finalTrustScore = Math.round(tieResult.tieTrustScore / 10);
+    const finalFraudScore = tieResult.tieFraudScore;
+
     await db.insert(sessionsTable).values({
       id: randomUUID(),
       workspaceId: site.workspaceId,
@@ -1417,11 +1506,27 @@ router.post("/collect", async (req, res) => {
       os: parsedOs,
       ua: rawUa,
       classification,
-      fraudScore,
-      trustScore,
-      confidence: humanResult.humanConfidence,
+      fraudScore: finalFraudScore,
+      trustScore: finalTrustScore,
+      confidence: tieResult.tieConfidence,
       action,
       reasonCodes,
+      tieTrustScore: tieResult.tieTrustScore,
+      tieHumanScore: tieResult.tieHumanScore,
+      tieBehaviorScore: tieResult.tieBehaviorScore,
+      tieDeviceScore: tieResult.tieDeviceScore,
+      tieNetworkScore: tieResult.tieNetworkScore,
+      tieIdentityScore: tieResult.tieIdentityScore,
+      tieTrafficScore: tieResult.tieTrafficScore,
+      tieGraphScore: tieResult.tieGraphScore,
+      tieFraudInverseScore: tieResult.tieFraudInverseScore,
+      tieFraudScore: tieResult.tieFraudScore,
+      tieConfidence: tieResult.tieConfidence,
+      tieRiskTier: tieResult.tieRiskTier,
+      tieDecision: tieResult.tieDecision,
+      tieReasonCodes: tieResult.tieReasonCodes,
+      tiePositiveSignals: tieResult.topPositiveSignals,
+      tieNegativeSignals: tieResult.topNegativeSignals,
       humanScore: humanResult.humanScore,
       humanConfidence: humanResult.humanConfidence,
       humanClassification: humanResult.humanClassification,
@@ -1488,25 +1593,39 @@ router.post("/collect", async (req, res) => {
       session_id: sessionId,
       score: {
         classification,
-        fraud_score: fraudScore,
-        trust_score: trustScore,
+        fraud_score: finalFraudScore,
+        trust_score: finalTrustScore,
+        action,
+        reason_codes: reasonCodes,
+        // TIE composite
+        tie_trust_score: tieResult.tieTrustScore,
+        tie_risk_tier: tieResult.tieRiskTier,
+        tie_decision: tieResult.tieDecision,
+        tie_confidence: tieResult.tieConfidence,
+        tie_fraud_score: tieResult.tieFraudScore,
+        tie_module_scores: {
+          human: tieResult.tieHumanScore,
+          behavior: tieResult.tieBehaviorScore,
+          device: tieResult.tieDeviceScore,
+          network: tieResult.tieNetworkScore,
+          identity: tieResult.tieIdentityScore,
+          traffic: tieResult.tieTrafficScore,
+          graph: tieResult.tieGraphScore,
+          fraud_inverse: tieResult.tieFraudInverseScore,
+        },
+        top_positive_signals: tieResult.topPositiveSignals,
+        top_negative_signals: tieResult.topNegativeSignals,
+        // Sub-engine scores
         human_score: humanResult.humanScore,
         human_classification: humanResult.humanClassification,
         human_decision: humanResult.humanDecision,
         human_confidence: humanResult.humanConfidence,
-        action,
-        reason_codes: reasonCodes,
         traffic_trust_score: trafficResult.trafficTrustScore,
         traffic_risk_tier: trafficResult.trafficRiskTier,
         traffic_decision: trafficResult.trafficDecision,
         traffic_quality_score: trafficResult.trafficQualityScore,
-        traffic_confidence: trafficResult.trafficConfidence,
         revenue_protection_score: revenueResult.revenueProtectionScore,
         revenue_risk_tier: revenueResult.revenueRiskTier,
-        revenue_decision: revenueResult.revenueDecision,
-        chargeback_risk_score: revenueResult.chargebackRiskScore,
-        refund_abuse_score: revenueResult.refundAbuseScore,
-        promo_abuse_score: revenueResult.promoAbuseScore,
         device_intel_score: deviceResult.deviceIntelScore,
         device_risk_tier: deviceResult.deviceRiskTier,
         device_session_count: deviceResult.sessionCount,

@@ -130,6 +130,95 @@ export default function SessionDrawer({ sessionId, open, onClose }) {
             </div>
 
             <div className="px-6 py-5 space-y-6">
+              {/* TIE Composite Engine */}
+              {s?.tie_trust_score != null && (
+                <section>
+                  <h3 className="data-label mb-2.5 flex items-center gap-1.5">
+                    <ShieldCheck size={13} className="text-trusted" />
+                    Trust Intelligence Engine
+                    <span className="ml-auto font-mono text-[10px] text-muted-foreground">Composite · 0–1000</span>
+                  </h3>
+                  <div className="rounded-md border border-trusted/20 bg-trusted/[0.03] p-4">
+                    {/* Score hero */}
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/8">
+                      <div className="flex items-center gap-3">
+                        <div className="text-center">
+                          <span className={cn("font-mono text-3xl font-bold tabular-nums",
+                            s.tie_trust_score >= 800 ? "text-trusted"
+                            : s.tie_trust_score >= 600 ? "text-review"
+                            : s.tie_trust_score >= 400 ? "text-suspicious"
+                            : "text-fraudulent"
+                          )}>
+                            {s.tie_trust_score}
+                          </span>
+                          <span className="text-slate-500 font-mono text-sm">/1000</span>
+                        </div>
+                        <div>
+                          <p className={cn("text-sm font-semibold capitalize",
+                            s.tie_trust_score >= 800 ? "text-trusted"
+                            : s.tie_trust_score >= 600 ? "text-review"
+                            : s.tie_trust_score >= 400 ? "text-suspicious"
+                            : "text-fraudulent"
+                          )}>
+                            {(s.tie_risk_tier ?? "—").replace(/_/g, " ")}
+                          </p>
+                          <p className="font-mono text-[11px] text-muted-foreground">
+                            Decision: <span className="font-medium text-slate-300 capitalize">{(s.tie_decision ?? "—").replace(/_/g, " ")}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono text-xs text-muted-foreground">Confidence</p>
+                        <p className="font-mono text-sm font-medium text-white">{Math.round((s.tie_confidence ?? 0) * 100)}%</p>
+                        <p className="font-mono text-[10px] text-muted-foreground mt-0.5">Fraud {s.tie_fraud_score ?? 0}</p>
+                      </div>
+                    </div>
+
+                    {/* 8 module scores */}
+                    <div className="space-y-1">
+                      <SubScoreBar label="Human Intelligence"    score={s.tie_human_score}        icon={UserCircle}    weight="20%" />
+                      <SubScoreBar label="Behavioral"            score={s.tie_behavior_score}     icon={Brain}         weight="15%" />
+                      <SubScoreBar label="Device Intelligence"   score={s.tie_device_score}       icon={HardDrives}    weight="15%" />
+                      <SubScoreBar label="Network Intelligence"  score={s.tie_network_score}      icon={WifiHigh}      weight="10%" />
+                      <SubScoreBar label="Identity Intelligence" score={s.tie_identity_score}     icon={ShieldCheck}   weight="10%" />
+                      <SubScoreBar label="Traffic Intelligence"  score={s.tie_traffic_score}      icon={Globe}         weight="10%" />
+                      <SubScoreBar label="Graph Intelligence"    score={s.tie_graph_score}        icon={Path}          weight="10%" />
+                      <SubScoreBar label="Fraud Inverse"         score={s.tie_fraud_inverse_score} icon={Eye}          weight="10%" />
+                    </div>
+
+                    {/* Signals */}
+                    {((s.tie_positive_signals?.length > 0) || (s.tie_negative_signals?.length > 0)) && (
+                      <div className="mt-3 pt-3 border-t border-white/8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {s.tie_positive_signals?.length > 0 && (
+                          <div>
+                            <p className="font-mono text-[10px] text-trusted mb-1.5">Positive signals</p>
+                            <ul className="space-y-1">
+                              {s.tie_positive_signals.map((sig, i) => (
+                                <li key={i} className="flex items-start gap-1.5 text-xs text-slate-300">
+                                  <span className="text-trusted shrink-0 mt-0.5">✓</span>{sig}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {s.tie_negative_signals?.length > 0 && (
+                          <div>
+                            <p className="font-mono text-[10px] text-fraudulent mb-1.5">Risk signals</p>
+                            <ul className="space-y-1">
+                              {s.tie_negative_signals.map((sig, i) => (
+                                <li key={i} className="flex items-start gap-1.5 text-xs text-slate-300">
+                                  <span className="text-fraudulent shrink-0 mt-0.5">✗</span>{sig}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
               {/* Why flagged */}
               <section>
                 <h3 className="data-label mb-2.5">Why this score</h3>
