@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
-import { useSite } from "@/context/SiteContext";
 import { fetcher } from "@/lib/api";
 import { Card, Spinner, EmptyState } from "@/components/common/Card";
 import { RangeSelect, Select, SearchInput } from "@/components/common/Controls";
@@ -9,7 +7,7 @@ import { StatusBadge, ActionBadge } from "@/components/common/StatusBadge";
 import { ScoreBar, ReasonCodes } from "@/components/common/Score";
 import { fmtDateTime, timeAgo } from "@/lib/format";
 import SessionDrawer from "./SessionDrawer";
-import { Pulse, CaretLeft, CaretRight, X } from "@phosphor-icons/react";
+import { Pulse, CaretLeft, CaretRight } from "@phosphor-icons/react";
 
 const CLASSES = [{ value: "trusted", label: "Trusted" }, { value: "suspicious", label: "Suspicious" }, { value: "fraudulent", label: "Fraudulent" }];
 const SOURCES = ["google", "meta", "bing", "direct", "newsletter"];
@@ -17,28 +15,15 @@ const DEVICES = ["Desktop", "Mobile", "Tablet"];
 const ACTIONS = [{ value: "observe", label: "Observe" }, { value: "flag", label: "Flag" }, { value: "review", label: "Review" }, { value: "block", label: "Block" }];
 
 export default function Sessions() {
-  const [searchParams] = useSearchParams();
-  const [filters, setFilters] = useState({
-    range: "30d", classification: "", source: "", device: "", action: "", search: "",
-    country: searchParams.get("country") || "",
-  });
+  const [filters, setFilters] = useState({ range: "30d", classification: "", source: "", device: "", action: "", search: "" });
   const [page, setPage] = useState(1);
   const [activeId, setActiveId] = useState(null);
-  const { siteId } = useSite();
   const pageSize = 20;
 
-  // Sync country filter when navigating from the geo drill-down
-  useEffect(() => {
-    const c = searchParams.get("country") || "";
-    setFilters((f) => ({ ...f, country: c }));
-    setPage(1);
-  }, [searchParams.get("country")]);
-
   const params = new URLSearchParams({ range: filters.range, page, page_size: pageSize });
-  ["classification", "source", "device", "action", "search", "country"].forEach((k) => filters[k] && params.set(k, filters[k]));
-  if (siteId) params.set("site_id", siteId);
+  ["classification", "source", "device", "action", "search"].forEach((k) => filters[k] && params.set(k, filters[k]));
 
-  const { data, isLoading } = useQuery({ queryKey: ["sessions", filters, page, siteId], queryFn: () => fetcher(`/sessions?${params}`) });
+  const { data, isLoading } = useQuery({ queryKey: ["sessions", filters, page], queryFn: () => fetcher(`/sessions?${params}`) });
 
   const set = (k) => (v) => { setFilters({ ...filters, [k]: v }); setPage(1); };
   const items = data?.items || [];
@@ -57,14 +42,6 @@ export default function Sessions() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        {filters.country && (
-          <span className="flex items-center gap-1.5 rounded-full border border-review/30 bg-review/10 px-2.5 py-1 font-mono text-xs text-review">
-            🌍 {filters.country}
-            <button onClick={() => set("country")("")} className="ml-0.5 rounded-full hover:text-white" aria-label="Clear country filter">
-              <X size={11} weight="bold" />
-            </button>
-          </span>
-        )}
         <SearchInput value={filters.search} onChange={set("search")} placeholder="IP, fingerprint, campaign…" testid="sessions-search" />
         <Select value={filters.classification} onChange={set("classification")} options={CLASSES} placeholder="All classifications" testid="filter-classification" />
         <Select value={filters.source} onChange={set("source")} options={SOURCES} placeholder="All sources" testid="filter-source" />

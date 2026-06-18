@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { ShieldChevron, Eye, EyeSlash, ArrowRight, CheckCircle } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
+import pohLogo from "@/assets/poh-logo.png";
+import pohMark from "@/assets/poh-mark.png";
 
 const BG = "https://images.unsplash.com/photo-1578662996442-48f60103fc96?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTF8MHwxfHNlYXJjaHwyfHxkYXJrJTIwYWJzdHJhY3QlMjB0ZXh0dXJlJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3ODExNDkwODR8MA&ixlib=rb-4.1.0&q=85";
 
@@ -14,14 +16,15 @@ export function AuthShell({ children, title, subtitle }) {
         <img src={BG} alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-br from-[#08090A]/70 via-[#08090A]/85 to-[#08090A]" />
         <div className="absolute inset-0 grid-backdrop opacity-60" />
-        <div className="relative flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-trusted/15 border border-trusted/30">
-            <ShieldChevron size={22} weight="fill" className="text-trusted" />
-          </div>
-          <div>
-            <div className="font-heading text-xl font-extrabold tracking-tight text-white">PoH</div>
-            <div className="data-label">Trust &amp; Fraud Intelligence</div>
-          </div>
+        <div className="relative flex items-center">
+          <Link to="/" aria-label="PoH Intelligence" className="inline-flex items-center">
+            <img
+              src={pohLogo}
+              alt="PoH Intelligence — Proof of Human"
+              className="h-28 w-auto select-none"
+              draggable="false"
+            />
+          </Link>
         </div>
 
         <div className="relative">
@@ -49,11 +52,15 @@ export function AuthShell({ children, title, subtitle }) {
       {/* Right form */}
       <div className="flex flex-1 items-center justify-center p-6">
         <div className="w-full max-w-sm">
-          <div className="lg:hidden mb-8 flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-trusted/15 border border-trusted/30">
-              <ShieldChevron size={18} weight="fill" className="text-trusted" />
-            </div>
-            <span className="font-heading text-lg font-extrabold text-white">PoH</span>
+          <div className="lg:hidden mb-8 flex items-center">
+            <Link to="/" aria-label="PoH Intelligence" className="inline-flex items-center">
+              <img
+                src={pohMark}
+                alt="PoH Intelligence"
+                className="h-12 w-auto select-none"
+                draggable="false"
+              />
+            </Link>
           </div>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-white">{title}</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>
@@ -128,15 +135,10 @@ export default function Login() {
         </div>
       </form>
 
-      <div className="mt-6 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          No workspace yet?{" "}
-          <Link to="/register" className="font-medium text-trusted hover:underline" data-testid="go-register">Create one</Link>
-        </p>
-        <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-white transition-colors">
-          Forgot password?
-        </Link>
-      </div>
+      <p className="mt-6 text-sm text-muted-foreground">
+        No workspace yet?{" "}
+        <Link to="/register" className="font-medium text-trusted hover:underline" data-testid="go-register">Create one</Link>
+      </p>
     </AuthShell>
   );
 }

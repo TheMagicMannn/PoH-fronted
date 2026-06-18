@@ -1,3 +1,4 @@
+import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -7,24 +8,18 @@ import AppLayout from "@/components/layout/AppLayout";
 import MarketingLayout from "@/components/marketing/MarketingLayout";
 import Home from "@/pages/marketing/Home";
 import About from "@/pages/marketing/About";
-import Products from "@/pages/marketing/Products";
+import ProofOfHumanPlatform from "@/pages/marketing/ProofOfHumanPlatform";
+import PremiumModules from "@/pages/marketing/PremiumModules";
+import ProductDetail from "@/pages/marketing/products/ProductDetail";
 import Pricing from "@/pages/marketing/Pricing";
 import Resources from "@/pages/marketing/Resources";
 import Support from "@/pages/marketing/Support";
+import Privacy from "@/pages/marketing/Privacy";
+import Terms from "@/pages/marketing/Terms";
+import GDPRCCPA from "@/pages/marketing/GDPRCCPA";
 
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
-import ForgotPassword from "@/pages/auth/ForgotPassword";
-import ResetPassword from "@/pages/auth/ResetPassword";
-
-import AdminLayout from "@/pages/admin/AdminLayout";
-import AdminOverview from "@/pages/admin/AdminOverview";
-import AdminWorkspaces from "@/pages/admin/AdminWorkspaces";
-import AdminWorkspaceDetail from "@/pages/admin/AdminWorkspaceDetail";
-import AdminUsers from "@/pages/admin/AdminUsers";
-import AdminUserDetail from "@/pages/admin/AdminUserDetail";
-import AdminAuditLogs from "@/pages/admin/AdminAuditLogs";
-
 import Overview from "@/pages/Overview";
 import Sessions from "@/pages/Sessions";
 import Conversions from "@/pages/Conversions";
@@ -34,9 +29,6 @@ import Investigations from "@/pages/Investigations";
 import Integrations from "@/pages/Integrations";
 import Settings from "@/pages/Settings";
 import Onboarding from "@/pages/Onboarding";
-import Domains from "@/pages/Domains";
-import Profile from "@/pages/Profile";
-import LiveFeed from "@/pages/LiveFeed";
 
 function FullScreenLoader() {
   return (
@@ -70,17 +62,21 @@ function App() {
             <Route element={<MarketingLayout />}>
               <Route path="/" element={<Home />} />
               <Route path="/about" element={<About />} />
-              <Route path="/products" element={<Products />} />
+              <Route path="/products" element={<Navigate to="/products/proof-of-human-platform" replace />} />
+              <Route path="/products/proof-of-human-platform" element={<ProofOfHumanPlatform />} />
+              <Route path="/products/premium-modules" element={<PremiumModules />} />
+              <Route path="/products/:slug" element={<ProductDetail />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/resources" element={<Resources />} />
               <Route path="/support" element={<Support />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/gdpr-ccpa" element={<GDPRCCPA />} />
             </Route>
 
             {/* Auth */}
             <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
             <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Dashboard application */}
             <Route path="/app" element={<Protected><AppLayout /></Protected>}>
@@ -93,19 +89,6 @@ function App() {
               <Route path="integrations" element={<Integrations />} />
               <Route path="settings" element={<Settings />} />
               <Route path="onboarding" element={<Onboarding />} />
-              <Route path="domains" element={<Domains />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="live" element={<LiveFeed />} />
-            </Route>
-
-            {/* Platform Admin — owner role only (enforced in AdminLayout) */}
-            <Route path="/admin" element={<Protected><AdminLayout /></Protected>}>
-              <Route index element={<AdminOverview />} />
-              <Route path="workspaces" element={<AdminWorkspaces />} />
-              <Route path="workspaces/:id" element={<AdminWorkspaceDetail />} />
-              <Route path="users" element={<AdminUsers />} />
-              <Route path="users/:id" element={<AdminUserDetail />} />
-              <Route path="audit-logs" element={<AdminAuditLogs />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -30,9 +30,9 @@ export default function Register() {
   return (
     <AuthShell title="Create your workspace" subtitle="Start scoring traffic in minutes. No credit card required.">
       <form onSubmit={submit} className="mt-7 space-y-4" data-testid="register-form">
-        <Field label="Full name" value={form.name} required onChange={set("name")} data-testid="register-name" placeholder="Avery Chen" />
-        <Field label="Work email" type="email" value={form.email} required onChange={set("email")} data-testid="register-email" placeholder="you@company.com" />
-        <Field label="Company / workspace" value={form.company} onChange={set("company")} data-testid="register-company" placeholder="Acme Growth" />
+        <Field label="Full name" value={form.name} required onChange={set("name")} data-testid="register-name" placeholder="Kyle W" />
+        <Field label="Work email" type="email" value={form.email} required onChange={set("email")} data-testid="register-email" placeholder="kyle@internetsubway.com" />
+        <Field label="Company / workspace" value={form.company} onChange={set("company")} data-testid="register-company" placeholder="Internet Subway" />
         <Field label="Password" type="password" value={form.password} required minLength={6} onChange={set("password")} data-testid="register-password" placeholder="At least 6 characters" />
 
         {error && <div data-testid="register-error" className="rounded-md border border-fraudulent/25 bg-fraudulent/10 px-3 py-2 text-xs text-fraudulent">{error}</div>}

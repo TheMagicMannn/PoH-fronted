@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSite } from "@/context/SiteContext";
 import { toast } from "sonner";
 import api, { fetcher } from "@/lib/api";
 import { Card, Spinner, EmptyState, KpiCard } from "@/components/common/Card";
@@ -17,12 +16,10 @@ const CLASSES = [{ value: "trusted", label: "Trusted" }, { value: "suspicious", 
 
 export default function Conversions() {
   const qc = useQueryClient();
-  const { siteId } = useSite();
   const [filters, setFilters] = useState({ range: "30d", status: "", classification: "", type: "" });
   const params = new URLSearchParams({ range: filters.range, page_size: 100 });
   ["status", "classification", "type"].forEach((k) => filters[k] && params.set(k, filters[k]));
-  if (siteId) params.set("site_id", siteId);
-  const { data, isLoading } = useQuery({ queryKey: ["conversions", filters, siteId], queryFn: () => fetcher(`/conversions?${params}`) });
+  const { data, isLoading } = useQuery({ queryKey: ["conversions", filters], queryFn: () => fetcher(`/conversions?${params}`) });
   const set = (k) => (v) => setFilters({ ...filters, [k]: v });
 
   const act = useMutation({
