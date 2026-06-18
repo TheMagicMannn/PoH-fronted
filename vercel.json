@@ -1,0 +1,27 @@
+{
+  "framework": null,
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @workspace/api-server run build && BASE_PATH=/ pnpm --filter @workspace/app run build",
+  "outputDirectory": "artifacts/app/dist/public",
+  "functions": {
+    "api/handler.ts": {
+      "maxDuration": 30,
+      "memory": 1024,
+      "includeFiles": "artifacts/api-server/dist/vercel/**,node_modules/geoip-lite/**"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/handler"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    }
+  ]
+}
