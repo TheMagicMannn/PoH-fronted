@@ -14,6 +14,17 @@ import Support from "@/pages/marketing/Support";
 
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
+import ForgotPassword from "@/pages/auth/ForgotPassword";
+import ResetPassword from "@/pages/auth/ResetPassword";
+
+import AdminLayout from "@/pages/admin/AdminLayout";
+import AdminOverview from "@/pages/admin/AdminOverview";
+import AdminWorkspaces from "@/pages/admin/AdminWorkspaces";
+import AdminWorkspaceDetail from "@/pages/admin/AdminWorkspaceDetail";
+import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminUserDetail from "@/pages/admin/AdminUserDetail";
+import AdminAuditLogs from "@/pages/admin/AdminAuditLogs";
+
 import Overview from "@/pages/Overview";
 import Sessions from "@/pages/Sessions";
 import Conversions from "@/pages/Conversions";
@@ -68,6 +79,8 @@ function App() {
             {/* Auth */}
             <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
             <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Dashboard application */}
             <Route path="/app" element={<Protected><AppLayout /></Protected>}>
@@ -83,6 +96,16 @@ function App() {
               <Route path="domains" element={<Domains />} />
               <Route path="profile" element={<Profile />} />
               <Route path="live" element={<LiveFeed />} />
+            </Route>
+
+            {/* Platform Admin — owner role only (enforced in AdminLayout) */}
+            <Route path="/admin" element={<Protected><AdminLayout /></Protected>}>
+              <Route index element={<AdminOverview />} />
+              <Route path="workspaces" element={<AdminWorkspaces />} />
+              <Route path="workspaces/:id" element={<AdminWorkspaceDetail />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="users/:id" element={<AdminUserDetail />} />
+              <Route path="audit-logs" element={<AdminAuditLogs />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

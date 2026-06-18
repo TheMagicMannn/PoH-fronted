@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { randomUUID, randomBytes } from "crypto";
 import { db } from "@workspace/db";
-import { usersTable, workspacesTable, sitesTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { usersTable, workspacesTable, sitesTable, passwordResetTokensTable } from "@workspace/db";
+import { eq, and, gt } from "drizzle-orm";
 import {
   hashPassword,
   verifyPassword,
@@ -146,6 +146,64 @@ router.post("/change-password", requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch {
     res.status(500).json({ detail: "Failed to change password" });
+  }
+});
+
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body as { email?: string };
+    if (!email?.trim()) { res.status(400).json({ detail: "email is required" }); return; }
+
+    const [user] = await db
+      .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name })
+      .from(usersTable)
+      .where(eq(usersTable.email, email.toLowerCase().trim()))
+      .limit(1);
+
+    if (user) {
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      await db.insert(passwordResetTokensTable).values({
+        id: randomUUID(),
+        userId: user.id,
+        token,
+        expiresAt,
+      });
+
+      const resetUrl = `${process.env["APP_URL"] ?? "http://localhost:23863"}/reset-password?token=${token}`;
+      console.log(`\n[PASSWORD RESET] User: ${user.email}\nReset URL: ${resetUrl}\n`);
+    }
+
+    res.json({ ok: true, message: "If an account exists for that email, a reset link has been sent." });
+  } catch {
+    res.status(500).json({ detail: "Failed to process request" });
+  }
+});
+
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, new_password } = req.body as { token?: string; new_password?: string };
+    if (!token) { res.status(400).json({ detail: "token is required" }); return; }
+    if (!new_password || new_password.length < 8) {
+      res.status(400).json({ detail: "new_password must be at least 8 characters" }); return;
+    }
+
+    const [resetToken] = await db
+      .select()
+      .from(passwordResetTokensTable)
+      .where(eq(passwordResetTokensTable.token, token))
+      .limit(1);
+
+    if (!resetToken) { res.status(400).json({ detail: "Invalid or expired reset token" }); return; }
+    if (resetToken.usedAt) { res.status(400).json({ detail: "This reset link has already been used" }); return; }
+    if (new Date() > resetToken.expiresAt) { res.status(400).json({ detail: "Reset link has expired. Please request a new one." }); return; }
+
+    await db.update(usersTable).set({ passwordHash: hashPassword(new_password) }).where(eq(usersTable.id, resetToken.userId));
+    await db.update(passwordResetTokensTable).set({ usedAt: new Date() }).where(eq(passwordResetTokensTable.id, resetToken.id));
+
+    res.json({ ok: true, message: "Password updated successfully. You can now sign in." });
+  } catch {
+    res.status(500).json({ detail: "Failed to reset password" });
   }
 });
 

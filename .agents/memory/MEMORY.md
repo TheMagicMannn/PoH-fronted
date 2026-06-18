@@ -3,3 +3,5 @@
 - [Browser SDK build](browser-sdk-build.md) — poh.ts uses DOM globals, excluded from Node.js tsconfig, has own tsconfig with DOM lib, built to dist/poh.js
 - [TIEg scorer design](tieg-scorer.md) — pure function, 0–1000 scale (×10 of 0–100 sub-scores), 5 tiers, 5 decisions; no DB calls needed at score time.
 - [Engine implementation pattern](engine-pattern.md) — each engine: DB schema → pure scorer → dashboard.ts (reason codes + collect + overview + seed) → frontend (Overview panel + SessionDrawer section).
+- [API lib default export](api-lib-export.md) — api.js exports axios instance as default, fetcher as named; always use `import api from "@/lib/api"` not `{ api }`.
+- [TanStack Query v5 patterns](tanstack-query-v5.md) — onSuccess removed from useQuery in v5; use useEffect watching data instead.

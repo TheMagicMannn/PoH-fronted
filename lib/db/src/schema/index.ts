@@ -9,3 +9,4 @@ export * from "./alerts.js";
 export * from "./integrations.js";
 export * from "./misc.js";
 export * from "./page_views.js";
+export * from "./password-reset-tokens.js";

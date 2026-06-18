@@ -128,10 +128,15 @@ export default function Login() {
         </div>
       </form>
 
-      <p className="mt-6 text-sm text-muted-foreground">
-        No workspace yet?{" "}
-        <Link to="/register" className="font-medium text-trusted hover:underline" data-testid="go-register">Create one</Link>
-      </p>
+      <div className="mt-6 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          No workspace yet?{" "}
+          <Link to="/register" className="font-medium text-trusted hover:underline" data-testid="go-register">Create one</Link>
+        </p>
+        <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-white transition-colors">
+          Forgot password?
+        </Link>
+      </div>
     </AuthShell>
   );
 }

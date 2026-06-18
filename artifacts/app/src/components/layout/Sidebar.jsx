@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   SquaresFour, Pulse, Target, Megaphone, ShieldCheck, MagnifyingGlass,
   PlugsConnected, GearSix, ShieldChevron, SignOut, Code, GlobeHemisphereWest,
-  Broadcast,
+  Broadcast, ShieldWarning,
 } from "@phosphor-icons/react";
 
 const NAV = [
@@ -63,6 +63,27 @@ export default function Sidebar() {
       </nav>
 
       <div className="border-t border-white/8 p-3 space-y-1">
+        {user?.role === "owner" && (
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-fraudulent/10 text-white border border-fraudulent/20"
+                  : "text-muted-foreground hover:text-white hover:bg-white/5 border border-transparent"
+              )
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <ShieldWarning size={18} weight={isActive ? "fill" : "regular"}
+                  className={isActive ? "text-fraudulent" : "text-muted-foreground"} />
+                <span>Platform Admin</span>
+              </>
+            )}
+          </NavLink>
+        )}
         <NavLink
           to="/app/onboarding"
           data-testid="nav-install-sdk"
