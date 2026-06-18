@@ -9,6 +9,7 @@ import { fmtDateTime, fmtCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
   MapPin, DeviceMobile, Browsers, Fingerprint, Globe, Clock, ShieldCheck, Eye, Prohibit, X,
+  UserCircle, Brain, HardDrives, WifiHigh, ClockCountdown,
 } from "@phosphor-icons/react";
 
 function SignalRow({ label, value, bad }) {
@@ -19,6 +20,47 @@ function SignalRow({ label, value, bad }) {
     </div>
   );
 }
+
+function SubScoreBar({ label, score, icon: Icon, weight }) {
+  const color = score >= 75 ? "#34D399" : score >= 50 ? "#FBBF24" : score != null ? "#F87171" : "#475569";
+  return (
+    <div className="flex items-center gap-2.5 py-1.5">
+      {Icon && <Icon size={13} style={{ color }} className="shrink-0" />}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <span className="font-mono text-[11px] text-slate-400">{label}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[10px] text-muted-foreground">{weight}</span>
+            <span className="font-mono text-xs font-medium tabular-nums" style={{ color }}>
+              {score != null ? score : "—"}
+            </span>
+          </div>
+        </div>
+        <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${score ?? 0}%`, background: color, opacity: 0.8 }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const HUMAN_CLS_COLORS = {
+  human: "text-trusted",
+  suspicious_human: "text-suspicious",
+  automation: "text-review",
+  bot: "text-fraudulent",
+  uncertain: "text-muted-foreground",
+};
+
+const HUMAN_DECISION_COLORS = {
+  allow: "text-trusted",
+  step_up: "text-suspicious",
+  challenge: "text-review",
+  block: "text-fraudulent",
+};
 
 const yn = (v) => (v ? "yes" : "no");
 
@@ -42,6 +84,7 @@ export default function SessionDrawer({ sessionId, open, onClose }) {
   });
 
   const sig = s?.signals || {};
+  const hasHumanScore = s?.human_score != null;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -62,7 +105,7 @@ export default function SessionDrawer({ sessionId, open, onClose }) {
                     <ActionBadge action={s.action} />
                   </div>
                   <p className="mt-1.5 font-mono text-xs text-muted-foreground">{s.session_id}</p>
-                  <p className="font-mono text-[11px] text-slate-500">Confidence {s.confidence}% · Trust {s.trust_score}</p>
+                  <p className="font-mono text-[11px] text-slate-500">Confidence {Math.round((s.human_confidence ?? s.confidence) * 100)}% · Trust {s.trust_score}</p>
                 </div>
               </div>
               <button onClick={onClose} className="rounded p-1.5 text-muted-foreground hover:text-white hover:bg-white/5"><X size={18} /></button>
@@ -76,6 +119,48 @@ export default function SessionDrawer({ sessionId, open, onClose }) {
                   <ReasonCodeList codes={s.reason_codes} />
                 </div>
               </section>
+
+              {/* Human Authenticity Engine */}
+              {hasHumanScore && (
+                <section>
+                  <h3 className="data-label mb-2.5 flex items-center gap-1.5">
+                    <UserCircle size={13} className="text-muted-foreground" />
+                    Human Authenticity Score
+                  </h3>
+                  <div className="rounded-md border border-white/8 bg-surface p-4 space-y-1">
+                    {/* Score header */}
+                    <div className="flex items-center justify-between pb-2 mb-1 border-b border-white/8">
+                      <div className="flex items-center gap-3">
+                        <span className={cn("font-mono text-2xl font-bold tabular-nums", HUMAN_CLS_COLORS[s.human_classification] ?? "text-white")}>
+                          {s.human_score}
+                        </span>
+                        <div>
+                          <p className={cn("text-sm font-medium capitalize", HUMAN_CLS_COLORS[s.human_classification] ?? "text-white")}>
+                            {(s.human_classification ?? "—").replace("_", " ")}
+                          </p>
+                          <p className="font-mono text-[11px] text-muted-foreground">
+                            Decision:{" "}
+                            <span className={cn("font-medium", HUMAN_DECISION_COLORS[s.human_decision] ?? "text-white")}>
+                              {s.human_decision ?? "—"}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono text-xs text-muted-foreground">Confidence</p>
+                        <p className="font-mono text-sm font-medium text-white">{Math.round((s.human_confidence ?? 0) * 100)}%</p>
+                      </div>
+                    </div>
+
+                    {/* 5 sub-scores */}
+                    <SubScoreBar label="Browser Integrity" score={s.browser_integrity_score} icon={Browsers} weight="25%" />
+                    <SubScoreBar label="Human Behavior" score={s.behavior_score} icon={Brain} weight="25%" />
+                    <SubScoreBar label="Device Consistency" score={s.device_consistency_score} icon={HardDrives} weight="15%" />
+                    <SubScoreBar label="Network Reputation" score={s.network_score} icon={WifiHigh} weight="20%" />
+                    <SubScoreBar label="Historical Auth." score={s.historical_score} icon={ClockCountdown} weight="15%" />
+                  </div>
+                </section>
+              )}
 
               {/* Context grid */}
               <section className="grid grid-cols-2 gap-3">

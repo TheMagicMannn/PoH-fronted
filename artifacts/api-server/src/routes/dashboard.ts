@@ -11,6 +11,7 @@ import {
 import { eq, and, gte, desc, count, sql } from "drizzle-orm";
 import { requireAuth, requireRole, publicUser } from "../lib/auth.js";
 import { hashPassword } from "../lib/auth.js";
+import { scoreHumanAuthenticity } from "../lib/humanScorer.js";
 
 const router = Router();
 
@@ -49,6 +50,26 @@ const REASON_CODES: Record<string, { label: string; category: string }> = {
   abnormal_click_to_conversion_timing: { label: "Abnormally fast click-to-conversion timing", category: "behavioral" },
   anomalous_hardware_profile: { label: "Anomalous hardware concurrency profile", category: "fingerprint" },
   high_velocity_source: { label: "High request velocity from traffic source", category: "velocity" },
+  // Human Authenticity Engine reason codes
+  webdriver_detected: { label: "WebDriver automation flag detected in browser", category: "automation" },
+  headless_browser_detected: { label: "High-confidence headless browser environment", category: "automation" },
+  automation_framework_signature: { label: "Automation framework globals detected (Puppeteer/Playwright/Selenium)", category: "automation" },
+  window_metrics_anomaly: { label: "Window size metrics inconsistent with real browser", category: "automation" },
+  cursor_entropy_low: { label: "Mouse path entropy too low — linear/scripted movement", category: "behavioral" },
+  click_pattern_robotic: { label: "Click intervals show robotic regularity", category: "behavioral" },
+  typing_pattern_nonhuman: { label: "Keystroke timing below human physiological minimum", category: "behavioral" },
+  typing_pattern_suspicious: { label: "Typing cadence unusually fast or uniform", category: "behavioral" },
+  scroll_cadence_suspicious: { label: "Scroll intervals show mechanical regularity", category: "behavioral" },
+  paste_only_interaction: { label: "Form filled via paste with no keyboard interaction", category: "behavioral" },
+  missing_user_agent: { label: "User-Agent string absent or empty", category: "fingerprint" },
+  inconsistent_timezone: { label: "No timezone reported — possible automation environment", category: "fingerprint" },
+  hardware_profile_missing: { label: "Hardware concurrency not reported", category: "fingerprint" },
+  screen_dimensions_missing: { label: "Screen dimensions not reported", category: "fingerprint" },
+  geo_unresolvable: { label: "IP geolocation unresolvable — possible masking", category: "network" },
+  no_fingerprint_history: { label: "No prior session history for this device", category: "historical" },
+  prior_fraud_flags: { label: "This device fingerprint has prior fraud flags", category: "historical" },
+  consistent_device_behavior: { label: "Device shows consistent legitimate behavior history", category: "historical" },
+  natural_session_rhythm: { label: "Session rhythm consistent with human browsing", category: "behavioral" },
 };
 
 // ---------- Overview ----------
@@ -207,6 +228,32 @@ router.get("/overview", requireAuth, async (req, res) => {
     const avgTrustScore = total > 0 ? Math.round(sessions.reduce((acc, s) => acc + (s.trustScore ?? 0), 0) / total) : 0;
     const avgConfidence = total > 0 ? Math.round((sessions.reduce((acc, s) => acc + (s.confidence ?? 0), 0) / total) * 100) : 0;
 
+    // Human Authenticity Intel aggregations
+    const humanClsMap: Record<string, number> = {};
+    for (const s of sessions) {
+      const hcls = s.humanClassification ?? "unscored";
+      humanClsMap[hcls] = (humanClsMap[hcls] ?? 0) + 1;
+    }
+    const humanClassificationBreakdown = [
+      { name: "human", label: "Human", value: humanClsMap["human"] ?? 0 },
+      { name: "suspicious_human", label: "Suspicious", value: humanClsMap["suspicious_human"] ?? 0 },
+      { name: "automation", label: "Automation", value: humanClsMap["automation"] ?? 0 },
+      { name: "bot", label: "Bot", value: humanClsMap["bot"] ?? 0 },
+    ];
+
+    const scoredSessions = sessions.filter((s) => s.humanScore != null);
+    const avgHumanScore = scoredSessions.length > 0
+      ? Math.round(scoredSessions.reduce((acc, s) => acc + (s.humanScore ?? 0), 0) / scoredSessions.length)
+      : null;
+    const avgHumanScores = scoredSessions.length > 0 ? {
+      human: avgHumanScore,
+      browser_integrity: Math.round(scoredSessions.reduce((acc, s) => acc + (s.browserIntegrityScore ?? 0), 0) / scoredSessions.length),
+      behavior: Math.round(scoredSessions.reduce((acc, s) => acc + (s.behaviorScore ?? 0), 0) / scoredSessions.length),
+      device_consistency: Math.round(scoredSessions.reduce((acc, s) => acc + (s.deviceConsistencyScore ?? 0), 0) / scoredSessions.length),
+      network: Math.round(scoredSessions.reduce((acc, s) => acc + (s.networkScore ?? 0), 0) / scoredSessions.length),
+      historical: Math.round(scoredSessions.reduce((acc, s) => acc + (s.historicalScore ?? 0), 0) / scoredSessions.length),
+    } : null;
+
     res.json({
       range,
       kpis: {
@@ -223,6 +270,7 @@ router.get("/overview", requireAuth, async (req, res) => {
         suppressed_conversions: suppressed,
         avg_trust_score: avgTrustScore,
         avg_confidence: avgConfidence,
+        avg_human_score: avgHumanScore,
       },
       distribution: [
         { name: "trusted", value: byCls["trusted"] ?? 0 },
@@ -238,6 +286,8 @@ router.get("/overview", requireAuth, async (req, res) => {
       by_os: byOs,
       hourly,
       score_distribution: scoreDist,
+      human_classification_breakdown: humanClassificationBreakdown,
+      avg_human_scores: avgHumanScores,
     });
   } catch (err) {
     res.status(500).json({ detail: "Failed to load overview" });
@@ -947,8 +997,29 @@ router.post("/demo/seed", requireRole("admin"), async (req, res) => {
       const daysAgo = Math.random() * 14;
       const startedAt = new Date(now.getTime() - daysAgo * 86400000);
       const reasons: string[] = [];
-      if (isFraud) reasons.push("datacenter_ip_origin", "headless_browser_indicators");
-      if (isSuspicious) reasons.push("vpn_usage");
+      if (isFraud) reasons.push("webdriver_detected", "headless_browser_detected", "automation_framework_signature");
+      if (isSuspicious) reasons.push("cursor_entropy_low", "vpn_usage");
+
+      // Human Authenticity Engine scores derived from classification
+      const humanScore = isFraud
+        ? Math.round(5 + Math.random() * 30)
+        : isSuspicious
+        ? Math.round(40 + Math.random() * 24)
+        : Math.round(72 + Math.random() * 23);
+      const humanClassification = isFraud
+        ? (Math.random() > 0.4 ? "bot" : "automation")
+        : isSuspicious
+        ? "suspicious_human"
+        : "human";
+      const humanDecision = isFraud ? "block" : isSuspicious ? "step_up" : "allow";
+      const humanConf = Math.round((0.65 + Math.random() * 0.3) * 100) / 100;
+
+      // Sub-scores correlated with overall human score
+      const biScore = Math.round(Math.max(0, Math.min(100, humanScore + (Math.random() * 20 - 10))));
+      const behScore = Math.round(Math.max(0, Math.min(100, humanScore + (Math.random() * 20 - 10))));
+      const dcScore = Math.round(Math.max(0, Math.min(100, humanScore + (Math.random() * 16 - 8))));
+      const netScore = Math.round(Math.max(0, Math.min(100, humanScore + (Math.random() * 16 - 8))));
+      const histScore = Math.round(Math.max(0, Math.min(100, humanScore + (Math.random() * 14 - 7))));
 
       sessionInserts.push({
         id: randomUUID(), workspaceId: wid, siteId: site.id, sessionId: `sess_${randomUUID().slice(0, 8)}`,
@@ -958,10 +1029,21 @@ router.post("/demo/seed", requireRole("admin"), async (req, res) => {
         source: src.source, medium: src.medium, campaign: src.campaign, adSet: src.adSet,
         deviceType: devices[Math.floor(Math.random() * devices.length)]!,
         browser: browsers[Math.floor(Math.random() * browsers.length)]!,
-        classification: cls, fraudScore: isFraud ? 70 + Math.random() * 30 : isSuspicious ? 30 + Math.random() * 30 : Math.random() * 20,
-        trustScore: isFraud ? Math.random() * 30 : isSuspicious ? 40 + Math.random() * 30 : 75 + Math.random() * 25,
-        confidence: 0.7 + Math.random() * 0.3, action: isFraud ? "block" : isSuspicious ? "review" : "observe",
+        classification: cls,
+        fraudScore: Math.round(100 - humanScore),
+        trustScore: humanScore,
+        confidence: humanConf,
+        action: isFraud ? "block" : isSuspicious ? "review" : "observe",
         reasonCodes: reasons, cost: Math.round(Math.random() * 300 * 100) / 100,
+        humanScore,
+        humanConfidence: humanConf,
+        humanClassification,
+        humanDecision,
+        browserIntegrityScore: biScore,
+        behaviorScore: behScore,
+        deviceConsistencyScore: dcScore,
+        networkScore: netScore,
+        historicalScore: histScore,
         startedAt,
       });
 
@@ -1020,33 +1102,6 @@ router.post("/collect", async (req, res) => {
     const beh = body.behavior ?? {};
     const utm = body.utm ?? {};
 
-    const headlessScore = Number(sig["headless_score"] ?? 0);
-    const webdriver = !!sig["webdriver"];
-    const noPlugins = Number(sig["plugins_count"] ?? 0) === 0;
-    const noLangs = Number(sig["languages_count"] ?? 0) === 0;
-    const interactionDepth = Number(beh["mouse_event_count"] ?? 0) + Number(beh["click_count"] ?? 0);
-
-    const reasonCodes: string[] = [];
-    if (webdriver) reasonCodes.push("browser_automation_detected");
-    if (headlessScore > 30) reasonCodes.push("headless_browser_indicators");
-    if (noPlugins) reasonCodes.push("missing_browser_plugins");
-    if (noLangs) reasonCodes.push("no_language_preferences");
-    if (interactionDepth < 3 && Number(beh["session_duration_ms"] ?? 9999) < 2000) {
-      reasonCodes.push("instant_bounce_timing");
-    }
-
-    const fraudScore =
-      (webdriver ? 60 : 0) +
-      (headlessScore > 30 ? 20 : 0) +
-      (noPlugins ? 10 : 0) +
-      (noLangs ? 5 : 0) +
-      (interactionDepth < 3 ? 5 : 0);
-
-    const classification =
-      fraudScore >= 60 ? "fraudulent" : fraudScore >= 25 ? "suspicious" : "trusted";
-    const trustScore = Math.max(0, 100 - fraudScore);
-    const action = classification === "fraudulent" ? "block" : classification === "suspicious" ? "review" : "observe";
-
     const sessionId = body.session_id ?? randomUUID();
 
     // --- UA parsing ---
@@ -1071,6 +1126,33 @@ router.post("/collect", async (req, res) => {
     const parsedCountry = geo?.country ?? null;
     const parsedCity = geo?.city || null;
 
+    // --- Human Authenticity Engine ---
+    const humanResult = await scoreHumanAuthenticity({
+      signals: sig,
+      behavior: beh,
+      ip: clientIp,
+      geo,
+      workspaceId: site.workspaceId,
+      fingerprintHash: body.fingerprint ?? null,
+    });
+
+    const trustScore = humanResult.humanScore;
+    const fraudScore = Math.max(0, Math.round(100 - humanResult.humanScore));
+    const classification =
+      humanResult.humanClassification === "bot" || humanResult.humanClassification === "automation"
+        ? "fraudulent"
+        : humanResult.humanClassification === "suspicious_human"
+        ? "suspicious"
+        : humanResult.humanClassification === "human"
+        ? "trusted"
+        : "suspicious";
+    const action =
+      humanResult.humanDecision === "block" ? "block"
+      : humanResult.humanDecision === "challenge" ? "flag"
+      : humanResult.humanDecision === "step_up" ? "review"
+      : "observe";
+    const reasonCodes = humanResult.reasonCodes;
+
     await db.insert(sessionsTable).values({
       id: randomUUID(),
       workspaceId: site.workspaceId,
@@ -1093,9 +1175,18 @@ router.post("/collect", async (req, res) => {
       classification,
       fraudScore,
       trustScore,
-      confidence: 0.75,
+      confidence: humanResult.humanConfidence,
       action,
       reasonCodes,
+      humanScore: humanResult.humanScore,
+      humanConfidence: humanResult.humanConfidence,
+      humanClassification: humanResult.humanClassification,
+      humanDecision: humanResult.humanDecision,
+      browserIntegrityScore: humanResult.browserIntegrityScore,
+      behaviorScore: humanResult.behaviorScore,
+      deviceConsistencyScore: humanResult.deviceConsistencyScore,
+      networkScore: humanResult.networkScore,
+      historicalScore: humanResult.historicalScore,
       startedAt: new Date(),
     }).onConflictDoNothing();
 
@@ -1116,7 +1207,17 @@ router.post("/collect", async (req, res) => {
     res.json({
       ok: true,
       session_id: sessionId,
-      score: { classification, fraud_score: fraudScore, trust_score: trustScore, action, reason_codes: reasonCodes },
+      score: {
+        classification,
+        fraud_score: fraudScore,
+        trust_score: trustScore,
+        human_score: humanResult.humanScore,
+        human_classification: humanResult.humanClassification,
+        human_decision: humanResult.humanDecision,
+        human_confidence: humanResult.humanConfidence,
+        action,
+        reason_codes: reasonCodes,
+      },
     });
   } catch (err) {
     res.status(500).json({ detail: "Collect failed", error: String(err) });

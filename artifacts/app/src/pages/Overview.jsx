@@ -12,7 +12,7 @@ import { fmtNum, fmtCurrency, fmtPct, reasonLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
   Pulse, Prohibit, Coins, Target, ShieldWarning, Globe, Gauge, Certificate,
-  DeviceMobile, Desktop, DeviceTablet, Browsers, Monitor,
+  DeviceMobile, Desktop, DeviceTablet, Browsers, Monitor, UserCircle, Brain, HardDrives, WifiHigh, ClockCountdown,
 } from "@phosphor-icons/react";
 
 const COLORS = { trusted: "#34D399", suspicious: "#FBBF24", fraudulent: "#F87171" };
@@ -101,6 +101,9 @@ export default function Overview() {
   const osData = data.by_os ?? [];
   const hourlyData = data.hourly ?? [];
   const scoreDist = data.score_distribution ?? [];
+  const humanBreakdown = data.human_classification_breakdown ?? [];
+  const avgHuman = data.avg_human_scores;
+  const totalHuman = humanBreakdown.reduce((s, d) => s + d.value, 0) || 1;
 
   const maxGeoTotal = Math.max(...geoData.map((r) => r.total), 1);
   const maxDeviceTotal = Math.max(...deviceData.map((r) => r.total), 1);
@@ -135,9 +138,9 @@ export default function Overview() {
           accent="text-suspicious" sub={`${fmtNum(k.invalid_conversions)} of ${fmtNum(k.total_conversions)}`} />
         <KpiCard testid="kpi-blocked" label="Blocked Sessions" value={fmtNum(k.blocked_sessions)} icon={Prohibit}
           accent="text-fraudulent" sub={`${fmtNum(k.suppressed_conversions)} conv. suppressed`} />
-        <KpiCard testid="kpi-trust-score" label="Avg Trust Score" value={`${k.avg_trust_score ?? 0}`} icon={Gauge}
-          accent={k.avg_trust_score >= 70 ? "text-trusted" : k.avg_trust_score >= 50 ? "text-suspicious" : "text-fraudulent"}
-          sub="0–100 scale" />
+        <KpiCard testid="kpi-trust-score" label="Avg Human Score" value={`${k.avg_human_score ?? k.avg_trust_score ?? 0}`} icon={UserCircle}
+          accent={(k.avg_human_score ?? k.avg_trust_score ?? 0) >= 70 ? "text-trusted" : (k.avg_human_score ?? k.avg_trust_score ?? 0) >= 50 ? "text-suspicious" : "text-fraudulent"}
+          sub="0–100 authenticity" />
         <KpiCard testid="kpi-confidence" label="Score Confidence" value={`${k.avg_confidence ?? 0}%`} icon={Certificate}
           accent="text-review" sub="model certainty" />
       </div>
@@ -331,6 +334,108 @@ export default function Overview() {
           </div>
         </div>
       </Card>
+
+      {/* ── Human Authenticity Intelligence ── */}
+      {(humanBreakdown.some((d) => d.value > 0) || avgHuman) && (
+        <Card className="p-5" data-testid="panel-human-intel">
+          <SectionTitle title="Human Authenticity Intelligence" desc="Engine classification breakdown and average feature-group scores" icon={UserCircle} />
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Classification donut */}
+            <div>
+              <p className="text-xs font-medium text-slate-300 mb-3">Classification Breakdown</p>
+              {humanBreakdown.some((d) => d.value > 0) ? (
+                <>
+                  <div className="relative">
+                    <ResponsiveContainer width="100%" height={180}>
+                      <PieChart>
+                        <Pie data={humanBreakdown} dataKey="value" nameKey="label" innerRadius={52} outerRadius={76} paddingAngle={2} strokeWidth={0}>
+                          {humanBreakdown.map((d) => (
+                            <Cell key={d.name} fill={
+                              d.name === "human" ? "#34D399"
+                              : d.name === "suspicious_human" ? "#FBBF24"
+                              : d.name === "automation" ? "#60A5FA"
+                              : "#F87171"
+                            } />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<ChartTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="font-mono text-xl font-semibold text-white">{fmtNum(totalHuman)}</span>
+                      <span className="data-label">scored</span>
+                    </div>
+                  </div>
+                  <div className="mt-2 space-y-1.5">
+                    {[
+                      { name: "human", label: "Human", color: "#34D399" },
+                      { name: "suspicious_human", label: "Suspicious Human", color: "#FBBF24" },
+                      { name: "automation", label: "Automation", color: "#60A5FA" },
+                      { name: "bot", label: "Bot", color: "#F87171" },
+                    ].map(({ name, label, color }) => {
+                      const d = humanBreakdown.find((x) => x.name === name);
+                      return (
+                        <div key={name} className="flex items-center gap-2 text-sm">
+                          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: color }} />
+                          <span className="text-slate-300">{label}</span>
+                          <span className="ml-auto font-mono text-white tabular-nums">{fmtNum(d?.value ?? 0)}</span>
+                          <span className="w-12 text-right font-mono text-xs text-muted-foreground">{fmtPct(((d?.value ?? 0) / totalHuman) * 100)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">No Human Authenticity data yet. Seed demo data or collect live sessions.</p>
+              )}
+            </div>
+
+            {/* Avg sub-scores */}
+            <div>
+              <p className="text-xs font-medium text-slate-300 mb-3">Avg Feature-Group Scores (Fleet)</p>
+              {avgHuman ? (
+                <div className="space-y-3 pt-1">
+                  {[
+                    { label: "Browser Integrity", key: "browser_integrity", icon: Browsers, weight: "25%" },
+                    { label: "Human Behavior", key: "behavior", icon: Brain, weight: "25%" },
+                    { label: "Device Consistency", key: "device_consistency", icon: HardDrives, weight: "15%" },
+                    { label: "Network Reputation", key: "network", icon: WifiHigh, weight: "20%" },
+                    { label: "Historical Auth.", key: "historical", icon: ClockCountdown, weight: "15%" },
+                  ].map(({ label, key, icon: Icon, weight }) => {
+                    const score = avgHuman[key] ?? 0;
+                    const color = score >= 75 ? "#34D399" : score >= 50 ? "#FBBF24" : "#F87171";
+                    return (
+                      <div key={key}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5">
+                            <Icon size={12} style={{ color }} />
+                            <span className="font-mono text-[11px] text-slate-400">{label}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[10px] text-muted-foreground">{weight}</span>
+                            <span className="font-mono text-xs font-medium tabular-nums" style={{ color }}>{score}</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${score}%`, background: color, opacity: 0.75 }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="mt-3 pt-3 border-t border-white/8 flex items-center justify-between">
+                    <span className="font-mono text-[11px] text-slate-400">Composite Human Score</span>
+                    <span className={cn("font-mono text-sm font-bold tabular-nums",
+                      avgHuman.human >= 75 ? "text-trusted" : avgHuman.human >= 50 ? "text-suspicious" : "text-fraudulent"
+                    )}>{avgHuman.human}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No scored sessions in range.</p>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* ── NEW: Score Distribution + Hourly Pattern ── */}
       <div className="grid gap-4 lg:grid-cols-2">

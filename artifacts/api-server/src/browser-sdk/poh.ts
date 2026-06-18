@@ -1,7 +1,7 @@
 /**
- * PoH Browser SDK — auto-bundled IIFE, served at /api/poh.js
- * Reads data-poh-key from the script tag, collects signals, sends to /api/collect.
- * Exposes window.poh for manual conversion tracking.
+ * PoH Browser SDK — Human Authenticity Intelligence
+ * Auto-bundled IIFE, served at /api/poh.js
+ * Collects device signals + behavioral biometrics for the Human Authenticity Engine.
  */
 
 /* ---------- helpers ---------- */
@@ -33,15 +33,60 @@ async function canvasFp(): Promise<string | undefined> {
   } catch { return undefined; }
 }
 
-function headlessChecks(): { score: number; flags: string[] } {
+/* ---------- browser integrity checks ---------- */
+function automationMarkers(): string[] {
+  const markers: string[] = [];
+  const w = window as Record<string, unknown>;
+  const d = document as Record<string, unknown>;
+
+  // Selenium / WebDriver
+  if (safe(() => !!w["__webdriver_evaluate"], false))     markers.push("__webdriver_evaluate");
+  if (safe(() => !!w["__selenium_evaluate"], false))      markers.push("__selenium_evaluate");
+  if (safe(() => !!w["__selenium_unwrapped"], false))     markers.push("__selenium_unwrapped");
+  if (safe(() => !!w["_selenium"], false))                markers.push("_selenium");
+  if (safe(() => !!w["_Selenium_IDE_Recorder"], false))   markers.push("selenium_ide");
+  if (safe(() => !!w["selenium"], false))                 markers.push("selenium");
+
+  // Phantom / Nightmare
+  if (safe(() => !!w["_phantom"], false))                 markers.push("phantom");
+  if (safe(() => !!w["callPhantom"], false))              markers.push("callPhantom");
+  if (safe(() => !!w["__nightmare"], false))              markers.push("nightmare");
+
+  // Chrome DevTools Protocol
+  const hasCdc = safe(() => Object.keys(d).some((k) => k.startsWith("$cdc_")), false);
+  if (hasCdc) markers.push("cdp_runtime");
+
+  // DOM automation controller
+  if (safe(() => !!w["domAutomation"], false))            markers.push("domAutomation");
+  if (safe(() => !!w["domAutomationController"], false))  markers.push("domAutomationController");
+
+  return markers;
+}
+
+function headlessChecks(): { score: number; flags: string[]; automation_markers: string[] } {
   const nav = navigator as Navigator & { webdriver?: boolean };
   const flags: string[] = [];
   let score = 0;
-  if (safe(() => !!nav.webdriver, false))          { flags.push("webdriver"); score += 40; }
-  if (safe(() => nav.plugins.length === 0, false)) { flags.push("no_plugins"); score += 10; }
-  if (safe(() => window.outerWidth === 0, false))  { flags.push("zero_outer_size"); score += 20; }
-  if (safe(() => !nav.languages || nav.languages.length === 0, false)) { flags.push("no_languages"); score += 10; }
-  return { score: Math.min(100, score), flags };
+
+  if (safe(() => !!nav.webdriver, false))                                    { flags.push("webdriver"); score += 40; }
+  if (safe(() => nav.plugins.length === 0, false))                          { flags.push("no_plugins"); score += 10; }
+  if (safe(() => window.outerWidth === 0, false))                           { flags.push("zero_outer_size"); score += 20; }
+  if (safe(() => !nav.languages || nav.languages.length === 0, false))      { flags.push("no_languages"); score += 10; }
+
+  // Headless Chrome: outerHeight === innerHeight (no chrome UI)
+  if (safe(() => window.outerHeight > 0 && window.outerHeight === window.innerHeight, false)) {
+    flags.push("no_browser_chrome"); score += 10;
+  }
+
+  // Permission probe: headless Chrome reports "default" for notification even when none asked
+  const notifPermission = safe(() => (Notification as { permission?: string }).permission, undefined);
+  if (notifPermission === "denied") { flags.push("notification_denied"); score += 5; }
+
+  return {
+    score: Math.min(100, score),
+    flags,
+    automation_markers: automationMarkers(),
+  };
 }
 
 function deviceSignals() {
@@ -63,6 +108,30 @@ function deviceSignals() {
   };
 }
 
+/* ---------- math helpers ---------- */
+function stddev(arr: number[]): number {
+  if (arr.length < 2) return 0;
+  const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+  const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / arr.length;
+  return Math.sqrt(variance);
+}
+
+function directionEntropy(pts: Array<[number, number]>): number {
+  if (pts.length < 3) return 0;
+  const angles: number[] = [];
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i]![0] - pts[i - 1]![0];
+    const dy = pts[i]![1] - pts[i - 1]![1];
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+      angles.push(Math.atan2(dy, dx));
+    }
+  }
+  if (angles.length < 2) return 0;
+  // Normalise to 0-1: humans have high directional variance
+  const sd = stddev(angles);
+  return Math.min(1, sd / Math.PI);
+}
+
 /* ---------- behavior tracker ---------- */
 class BehaviorTracker {
   private startMs = Date.now();
@@ -73,8 +142,15 @@ class BehaviorTracker {
   private keyCount = 0;
   private scrollCount = 0;
   private pasteCount = 0;
+  private focusBlurCount = 0;
   private maxScrollY = 0;
   private idlePeriods = 0;
+
+  // Enhanced biometric arrays
+  private mousePts: Array<[number, number]> = [];
+  private mouseSampleTimer: ReturnType<typeof setInterval> | null = null;
+  private clickTs: number[] = [];
+  private scrollTs: number[] = [];
   private keydowns: Array<{ down: number; up?: number }> = [];
   private attached = false;
 
@@ -91,38 +167,80 @@ class BehaviorTracker {
   attach() {
     if (this.attached) return;
     this.attached = true;
+
     document.addEventListener("mousemove", this.track(() => this.mouseCount++), { passive: true });
-    document.addEventListener("click", this.track(() => this.clickCount++), { passive: true });
+    document.addEventListener("click", this.track(() => {
+      this.clickCount++;
+      if (this.clickTs.length < 50) this.clickTs.push(Date.now());
+    }), { passive: true });
     document.addEventListener("scroll", this.track(() => {
       this.scrollCount++;
       if (window.scrollY > this.maxScrollY) this.maxScrollY = window.scrollY;
+      if (this.scrollTs.length < 100) this.scrollTs.push(Date.now());
     }), { passive: true });
-    document.addEventListener("keydown", this.track((e) => {
+    document.addEventListener("keydown", this.track((_e) => {
       this.keyCount++;
       if (this.keydowns.length < 200) this.keydowns.push({ down: Date.now() });
     }), { passive: true });
-    document.addEventListener("keyup", this.track((e) => {
+    document.addEventListener("keyup", this.track((_e) => {
       const open = [...this.keydowns].reverse().find((k) => !k.up);
       if (open) open.up = Date.now();
     }), { passive: true });
     document.addEventListener("paste", this.track(() => this.pasteCount++), { passive: true });
+    window.addEventListener("focus", this.track(() => this.focusBlurCount++), { passive: true });
+    window.addEventListener("blur", this.track(() => this.focusBlurCount++), { passive: true });
+
+    // Sample mouse position every 100ms for path entropy
+    this.mouseSampleTimer = setInterval(() => {
+      // We track via mousemove instead — see mousemove handler below
+    }, 100);
+
+    // Override mousemove to also sample positions (every ~10th event)
+    let moveSample = 0;
+    document.addEventListener("mousemove", (e: Event) => {
+      const me = e as MouseEvent;
+      moveSample++;
+      if (moveSample % 10 === 0 && this.mousePts.length < 200) {
+        this.mousePts.push([me.clientX, me.clientY]);
+      }
+    }, { passive: true });
   }
 
   collect() {
+    if (this.mouseSampleTimer) { clearInterval(this.mouseSampleTimer); this.mouseSampleTimer = null; }
+
     const duration = Date.now() - this.startMs;
     const cadence = this.keydowns.filter((k) => k.up).map((k) => k.up! - k.down).filter((d) => d > 0 && d < 2000);
     const scrollDepth = Math.round((this.maxScrollY / Math.max(1, document.documentElement.scrollHeight - window.innerHeight)) * 100);
+
+    // Compute biometric features
+    const mousePathEntropy = directionEntropy(this.mousePts);
+
+    const clickIntervals = this.clickTs.slice(1).map((t, i) => t - this.clickTs[i]!).filter((d) => d > 0);
+    const clickIntervalEntropy = clickIntervals.length >= 2 ? Math.round(stddev(clickIntervals)) : undefined;
+
+    const interKeyVariance = cadence.length >= 3 ? Math.round(stddev(cadence)) : undefined;
+
+    const scrollIntervals = this.scrollTs.slice(1).map((t, i) => t - this.scrollTs[i]!).filter((d) => d > 0 && d < 5000);
+    const scrollVariance = scrollIntervals.length >= 3 ? Math.round(stddev(scrollIntervals) * 10) / 10 : undefined;
+
     return {
       mouse_event_count: this.mouseCount,
       click_count: this.clickCount,
       key_event_count: this.keyCount,
       scroll_event_count: this.scrollCount,
       paste_count: this.pasteCount,
+      focus_blur_count: this.focusBlurCount,
       idle_periods: this.idlePeriods,
       session_duration_ms: duration,
       first_interaction_ms: this.firstInteractionMs ?? undefined,
       scroll_depth_percent: Math.min(100, scrollDepth),
       avg_keystroke_ms: cadence.length ? Math.round(cadence.reduce((a, b) => a + b, 0) / cadence.length) : undefined,
+      // Biometric features for Human Authenticity Engine
+      mouse_path_entropy: Math.round(mousePathEntropy * 1000) / 1000,
+      click_interval_entropy: clickIntervalEntropy,
+      inter_key_variance: interKeyVariance,
+      scroll_variance: scrollVariance,
     };
   }
 }
@@ -163,7 +281,7 @@ class PoH {
   }
 
   private async sendCollect(extra: Record<string, unknown> = {}) {
-    const { score, flags } = headlessChecks();
+    const { score, flags, automation_markers } = headlessChecks();
     const fp = await canvasFp();
     const payload = {
       sdk_key: this.sdkKey,
@@ -176,6 +294,7 @@ class PoH {
         webdriver: flags.includes("webdriver"),
         headless_score: score,
         headless_flags: flags,
+        automation_markers,
       },
       behavior: this.behavior.collect(),
       fingerprint: fp,
@@ -220,7 +339,6 @@ declare global {
     return;
   }
 
-  // Derive the API base from the script src so it works on any domain
   let apiBase = "";
   if (script?.src) {
     try {
