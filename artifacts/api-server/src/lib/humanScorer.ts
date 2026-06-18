@@ -94,8 +94,12 @@ function scoreBrowserIntegrity(sig: Signals): { score: number; reasons: string[]
     score -= 10;
   }
 
-  if (Number(sig.plugins_count ?? -1) === 0) {
-    score -= 10;
+  // Only flag zero plugins when corroborated by another automation signal —
+  // modern Chrome (v97+) reports navigator.plugins.length === 0 for real users.
+  const hasAutomationCorroboration = sig.webdriver || headless > 20
+    || (sig.automation_markers as string[] ?? []).length > 0;
+  if (Number(sig.plugins_count ?? -1) === 0 && hasAutomationCorroboration) {
+    score -= 8;
     reasons.push("missing_browser_plugins");
   }
 
@@ -238,12 +242,11 @@ function scoreBehavior(beh: Behavior): { score: number; reasons: string[] } {
     reasons.push("zero_interaction_signals");
   }
 
-  // Instant bot: very short KNOWN session, no interaction (guard durationSec > 0
-  // so sessions that didn't send duration at all are not penalised)
-  if (durationSec > 0 && durationSec < 1 && mouseCount === 0 && clickCount === 0) {
-    score -= 20;
-    reasons.push("instant_bounce_timing");
-  }
+  // NOTE: instant_bounce_timing was removed from the behavior scorer.
+  // The SDK fires poh.track() at DOMContentLoaded (~100-300ms after page load),
+  // meaning every real user's first collect has duration < 1s and 0 interactions.
+  // Penalising here produces false positives for all real users.
+  // Duration-based bounce detection is handled by the traffic temporal scorer.
 
   // Natural first interaction delay
   const firstInteraction = Number(beh.first_interaction_ms ?? 0);
@@ -463,7 +466,9 @@ export async function scoreHumanAuthenticity(params: {
       humanClassification = "automation";
       humanDecision = "challenge";
     }
-  } else if (behScore < 55) {
+  } else if (behScore < 40) {
+    // Lowered from 55: only override when behavior is clearly suspicious, not just
+    // when the user arrived recently and hasn't had time to interact yet.
     if (humanClassification === "human") {
       humanClassification = "suspicious_human";
       humanDecision = "step_up";

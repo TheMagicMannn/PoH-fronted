@@ -125,7 +125,10 @@ function scoreEngagement(i: TrafficScoreInput): { score: number; codes: string[]
   const timeOnPage = Number(sig["time_on_page"] ?? beh["time_on_page"] ?? 0);
   const scrollDepth = Number(sig["scroll_depth"] ?? sig["scroll_depth_percent"]
     ?? beh["scroll_depth_percent"] ?? 0);
-  const interactionDepth = Number(sig["interaction_depth"] ?? 0);
+  // interaction_depth is a legacy signal not sent by the current SDK — treat null as
+  // "not provided" rather than "zero", to avoid penalising every modern session.
+  const interactionDepthRaw = sig["interaction_depth"];
+  const interactionDepth = interactionDepthRaw != null ? Number(interactionDepthRaw) : null;
   const mouseEvents = Number(beh["mouse_event_count"] ?? 0);
   const keyEvents = Number(beh["key_event_count"] ?? 0);
   const scrollEvents = Number(beh["scroll_event_count"] ?? 0);
@@ -137,17 +140,24 @@ function scoreEngagement(i: TrafficScoreInput): { score: number; codes: string[]
     else                       s += 20;
   }
 
-  if (scrollDepth <= 0 && interactionDepth === 0) { s -= 15; codes.push("low_engagement"); }
-  else if (scrollDepth > 0) {
+  // Scroll depth bonus/penalty (scroll depth of 0 is common at page-load time — only
+  // penalise when there is also zero behavioural evidence of any engagement)
+  if (scrollDepth > 0) {
     if (scrollDepth <= 30)  s += 5;
     else if (scrollDepth <= 70) s += 15;
     else                    s += 20;
+  } else if (mouseEvents === 0 && keyEvents === 0 && scrollEvents === 0) {
+    s -= 10;
+    codes.push("low_engagement");
   }
 
-  if (interactionDepth <= 0)    { s -= 20; codes.push("low_engagement"); }
-  else if (interactionDepth <= 2) s += 0;
-  else if (interactionDepth <= 5) s += 10;
-  else                            s += 15;
+  // Interaction depth — only score this signal if the SDK actually sent it
+  if (interactionDepth !== null) {
+    if (interactionDepth <= 0)    { s -= 20; codes.push("low_engagement"); }
+    else if (interactionDepth <= 2) s += 0;
+    else if (interactionDepth <= 5) s += 10;
+    else                            s += 15;
+  }
 
   if (mouseEvents > 5)  s += 10;
   if (keyEvents > 0)    s += 5;
@@ -168,14 +178,21 @@ function scoreConversion(i: TrafficScoreInput): { score: number; codes: string[]
   const keyEvents   = Number(beh["key_event_count"] ?? 0);
   const mouseEvents = Number(beh["mouse_event_count"] ?? 0);
 
+  // Only score interaction timing when first_interaction_ms was actually provided —
+  // otherwise the user simply hasn't interacted yet (SDK fired at DOMContentLoaded).
   if (firstMs > 0) {
     if (firstMs < 500) { s -= 30; codes.push("conversion_too_fast"); }
     else if (firstMs >= 2000) s += 10;
-  }
 
-  if (sessionMs > 0) {
-    if (sessionMs < 1000) { s -= 25; codes.push("conversion_too_fast"); }
-    else if (sessionMs >= 5000) s += 10;
+    // Session duration is only meaningful when paired with a known first interaction.
+    // Without firstMs, sessionMs just reflects how fast the SDK initialised, not user speed.
+    if (sessionMs > 0) {
+      if (sessionMs < 1000) { s -= 25; codes.push("conversion_too_fast"); }
+      else if (sessionMs >= 5000) s += 10;
+    }
+  } else if (sessionMs >= 5000) {
+    // Long session with no interaction — still a positive signal (user is reading)
+    s += 5;
   }
 
   if (pasteCount > 0 && keyEvents === 0) { s -= 20; codes.push("suspicious_attribution"); }
