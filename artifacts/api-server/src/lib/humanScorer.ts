@@ -444,8 +444,27 @@ export async function scoreHumanAuthenticity(params: {
   );
 
   const humanConfidence = estimateConfidence(signals, behavior, histCount, groupScores);
-  const humanClassification = classify(humanScore);
-  const humanDecision = decide(humanScore, humanConfidence);
+
+  // Behavior floor: no matter how high other sub-scores are,
+  // a very low behavior score caps the classification.
+  // behScore 26 with biScore 92 should NOT yield "suspicious_human".
+  let humanClassification = classify(humanScore);
+  let humanDecision = decide(humanScore, humanConfidence);
+
+  if (behScore < 20) {
+    humanClassification = "bot";
+    humanDecision = "block";
+  } else if (behScore < 40) {
+    if (humanClassification === "human" || humanClassification === "suspicious_human") {
+      humanClassification = "automation";
+      humanDecision = "challenge";
+    }
+  } else if (behScore < 55) {
+    if (humanClassification === "human") {
+      humanClassification = "suspicious_human";
+      humanDecision = "step_up";
+    }
+  }
 
   const allReasons = [...biReasons, ...behReasons, ...dcReasons, ...netReasons, ...histReasons];
   const uniqueReasons = [...new Set(allReasons)].slice(0, 5);
