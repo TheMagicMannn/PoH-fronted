@@ -215,9 +215,9 @@ export default function SessionDrawer({ sessionId, open, onClose }) {
               {/* Context grid */}
               <section className="grid grid-cols-2 gap-3">
                 {[
-                  { icon: Globe, label: "Source / Medium", value: `${s.source} / ${s.medium}` },
-                  { icon: MapPin, label: "Geo", value: `${s.city}, ${s.country}` },
-                  { icon: DeviceMobile, label: "Device", value: `${s.device_type} · ${s.os}` },
+                  { icon: Globe, label: "Source / Medium", value: [s.source, s.medium].filter(v => v && v !== "null").join(" / ") || "—" },
+                  { icon: MapPin, label: "Geo", value: [s.city, s.country].filter(v => v && v !== "null").join(", ") || "—" },
+                  { icon: DeviceMobile, label: "Device", value: [s.device_type, s.os].filter(v => v && v !== "null").join(" · ") || "—" },
                   { icon: Browsers, label: "Browser", value: s.browser },
                   { icon: Fingerprint, label: "Fingerprint", value: s.fingerprint_hash },
                   { icon: Clock, label: "First seen", value: fmtDateTime(s.started_at) },

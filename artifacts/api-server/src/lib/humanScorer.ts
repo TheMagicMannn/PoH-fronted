@@ -165,7 +165,8 @@ function scoreBehavior(beh: Behavior): { score: number; reasons: string[] } {
 
   // Click behavior
   const clickCount = Number(beh.click_count ?? 0);
-  if (clickCount === 0 && durationSec > 5) score -= 8;
+  // Only penalise after a very long session; dashboard readers may not click at all
+  if (clickCount === 0 && durationSec > 15) score -= 8;
 
   const clickEntropy = beh.click_interval_entropy != null ? Number(beh.click_interval_entropy) : -1;
   if (clickEntropy >= 0 && clickCount >= 2) {
@@ -229,16 +230,17 @@ function scoreBehavior(beh: Behavior): { score: number; reasons: string[] } {
   if (durationSec > 15 && idlePeriods === 0) score -= 5;
   else if (idlePeriods > 0) score += 3;
 
-  // Zero interaction across all event types (regardless of duration)
+  // Zero interaction — only meaningful if the session ran long enough to expect signals
   const keyCount2 = Number(beh.key_event_count ?? 0);
   const scrollCount2 = Number(beh.scroll_event_count ?? 0);
-  if (mouseCount === 0 && clickCount === 0 && keyCount2 === 0 && scrollCount2 === 0) {
+  if (durationSec > 3 && mouseCount === 0 && clickCount === 0 && keyCount2 === 0 && scrollCount2 === 0) {
     score -= 12;
     reasons.push("zero_interaction_signals");
   }
 
-  // Instant bot: very short session, no interaction
-  if (durationSec < 1 && mouseCount === 0 && clickCount === 0) {
+  // Instant bot: very short KNOWN session, no interaction (guard durationSec > 0
+  // so sessions that didn't send duration at all are not penalised)
+  if (durationSec > 0 && durationSec < 1 && mouseCount === 0 && clickCount === 0) {
     score -= 20;
     reasons.push("instant_bounce_timing");
   }

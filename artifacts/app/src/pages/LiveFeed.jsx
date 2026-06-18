@@ -194,7 +194,7 @@ export default function LiveFeed() {
                         {s.country ?? "—"}
                       </span>
                       <span className="col-span-2 truncate text-slate-400">
-                        {s.source ?? "—"}
+                        {(s.source && s.source !== "null") ? s.source : "—"}
                       </span>
                       <span className="col-span-2">
                         <span className={`inline-flex items-center gap-1 ${hCls.color}`}>

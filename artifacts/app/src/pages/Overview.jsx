@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { useSite } from "@/context/SiteContext";
 import { fetcher } from "@/lib/api";
 import {
@@ -88,6 +89,7 @@ function BreakdownBar({ name, total, bad, fraud_rate, maxTotal }) {
 export default function Overview() {
   const [range, setRange] = useState("7d");
   const { siteId } = useSite();
+  const navigate = useNavigate();
   const siteParam = siteId ? `&site_id=${siteId}` : "";
   const { data, isLoading } = useQuery({
     queryKey: ["overview", range, siteId],
@@ -262,10 +264,16 @@ export default function Overview() {
               </thead>
               <tbody>
                 {geoData.map((row) => (
-                  <tr key={row.country} className="border-b border-white/5 hover:bg-white/[0.02]">
+                  <tr
+                    key={row.country}
+                    className="border-b border-white/5 hover:bg-white/[0.04] cursor-pointer transition-colors group"
+                    onClick={() => navigate(`/app/sessions?country=${encodeURIComponent(row.country)}`)}
+                    title={`View all sessions from ${countryName(row.country)}`}
+                  >
                     <td className="px-3 py-2.5">
                       <span className="mr-2">{countryFlag(row.country)}</span>
-                      <span className="text-slate-200">{countryName(row.country)}</span>
+                      <span className="text-slate-200 group-hover:text-white transition-colors">{countryName(row.country)}</span>
+                      <span className="ml-1.5 opacity-0 group-hover:opacity-60 transition-opacity text-[10px] font-mono text-slate-400">→ sessions</span>
                     </td>
                     <td className="px-3 py-2.5 font-mono text-xs text-slate-300">{fmtNum(row.total)}</td>
                     <td className="px-3 py-2.5">
