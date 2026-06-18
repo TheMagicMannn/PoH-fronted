@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import {
   MapPin, DeviceMobile, Browsers, Fingerprint, Globe, Clock, ShieldCheck, Eye, Prohibit, X,
   UserCircle, Brain, HardDrives, WifiHigh, ClockCountdown, Pulse, Target,
-  ArrowRight, Path,
+  ArrowRight, Path, CurrencyDollar, ChartLine,
 } from "@phosphor-icons/react";
 
 function fmtDuration(ms) {
@@ -225,6 +225,113 @@ export default function SessionDrawer({ sessionId, open, onClose }) {
                     <SubScoreBar label="Geographic Intel."    score={s.traffic_geo_score}           icon={MapPin}         weight="10%" />
                     <SubScoreBar label="Temporal Patterns"    score={s.traffic_temporal_score}      icon={ClockCountdown} weight="10%" />
                     <SubScoreBar label="Device / Network"     score={s.traffic_device_network_score} icon={HardDrives}    weight="10%" />
+                  </div>
+                </section>
+              )}
+
+              {/* Revenue Protection Engine */}
+              {s?.revenue_protection_score != null && (
+                <section>
+                  <h3 className="data-label mb-2.5 flex items-center gap-1.5">
+                    <CurrencyDollar size={13} className="text-muted-foreground" />
+                    Revenue Protection Score
+                  </h3>
+                  <div className="rounded-md border border-white/8 bg-surface p-4 space-y-1">
+                    <div className="flex items-center justify-between pb-2 mb-1 border-b border-white/8">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-2xl font-bold tabular-nums" style={{
+                          color: s.revenue_protection_score >= 80 ? "#34D399"
+                            : s.revenue_protection_score >= 65 ? "#60A5FA"
+                            : s.revenue_protection_score >= 50 ? "#FBBF24"
+                            : s.revenue_protection_score >= 35 ? "#F87171"
+                            : "#DC2626",
+                        }}>
+                          {s.revenue_protection_score}
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium capitalize" style={{
+                            color: s.revenue_risk_tier === "safe" ? "#34D399"
+                              : s.revenue_risk_tier === "low" ? "#60A5FA"
+                              : s.revenue_risk_tier === "moderate" ? "#FBBF24"
+                              : s.revenue_risk_tier === "elevated" ? "#F87171"
+                              : "#DC2626",
+                          }}>
+                            {(s.revenue_risk_tier ?? "—")} risk
+                          </p>
+                          <p className="font-mono text-[11px] text-muted-foreground">
+                            Decision:{" "}
+                            <span className="font-medium text-slate-300">
+                              {(s.revenue_decision ?? "—").replace(/_/g, " ")}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <SubScoreBar label="Session Integrity"    score={s.session_integrity_score}         icon={ShieldCheck}    weight="25%" />
+                    <SubScoreBar label="Network Trust"        score={s.network_trust_score}             icon={WifiHigh}       weight="20%" />
+                    <SubScoreBar label="Traffic Quality"      score={s.revenue_traffic_quality_score}   icon={Pulse}          weight="20%" />
+                    <SubScoreBar label="Behavioral Financial" score={s.behavioral_financial_score}      icon={Brain}          weight="20%" />
+                    <SubScoreBar label="Identity Signals"     score={s.identity_signals_score}          icon={UserCircle}     weight="15%" />
+                    <div className="mt-2 pt-2 border-t border-white/8 grid grid-cols-2 gap-1.5">
+                      {[
+                        { label: "Chargeback Risk",  score: s.chargeback_risk_score },
+                        { label: "Refund Abuse",     score: s.refund_abuse_score },
+                        { label: "Promo Abuse",      score: s.promo_abuse_score },
+                        { label: "Billing Anomaly",  score: s.billing_anomaly_score },
+                      ].map(({ label, score }) => {
+                        const col = score >= 60 ? "#F87171" : score >= 35 ? "#FBBF24" : "#34D399";
+                        return (
+                          <div key={label} className="rounded bg-white/5 p-1.5">
+                            <p className="font-mono text-[10px] text-slate-500">{label}</p>
+                            <p className="font-mono text-sm font-medium mt-0.5" style={{ color: col }}>{score ?? "—"}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* Device Intelligence Engine */}
+              {s?.device_intel_score != null && (
+                <section>
+                  <h3 className="data-label mb-2.5 flex items-center gap-1.5">
+                    <Fingerprint size={13} className="text-muted-foreground" />
+                    Device Intelligence Score
+                  </h3>
+                  <div className="rounded-md border border-white/8 bg-surface p-4 space-y-1">
+                    <div className="flex items-center justify-between pb-2 mb-1 border-b border-white/8">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-2xl font-bold tabular-nums" style={{
+                          color: s.device_intel_score >= 80 ? "#34D399"
+                            : s.device_intel_score >= 60 ? "#60A5FA"
+                            : s.device_intel_score >= 40 ? "#FBBF24"
+                            : s.device_intel_score >= 20 ? "#F87171"
+                            : "#DC2626",
+                        }}>
+                          {s.device_intel_score}
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium capitalize" style={{
+                            color: s.device_risk_tier === "clean" ? "#34D399"
+                              : s.device_risk_tier === "watch" ? "#60A5FA"
+                              : s.device_risk_tier === "suspicious" ? "#FBBF24"
+                              : s.device_risk_tier === "flagged" ? "#F87171"
+                              : "#DC2626",
+                          }}>
+                            {(s.device_risk_tier ?? "—")} device
+                          </p>
+                          <p className="font-mono text-[11px] text-muted-foreground">
+                            Sessions from device:{" "}
+                            <span className="font-medium text-slate-300">{s.device_session_count ?? 1}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <SubScoreBar label="Velocity Control"    score={s.device_velocity_score}    icon={ChartLine}      weight="30%" />
+                    <SubScoreBar label="Fraud Rate History"  score={s.device_fraud_rate_score}  icon={ShieldCheck}    weight="30%" />
+                    <SubScoreBar label="Geographic Spread"   score={s.device_spread_score}      icon={Globe}          weight="20%" />
+                    <SubScoreBar label="Recurrence Pattern"  score={s.device_recurrence_score}  icon={ClockCountdown} weight="20%" />
                   </div>
                 </section>
               )}

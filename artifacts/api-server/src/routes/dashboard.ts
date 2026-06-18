@@ -13,6 +13,8 @@ import { requireAuth, requireRole, publicUser } from "../lib/auth.js";
 import { hashPassword } from "../lib/auth.js";
 import { scoreHumanAuthenticity } from "../lib/humanScorer.js";
 import { scoreTrafficIntelligence } from "../lib/trafficScorer.js";
+import { scoreRevenueProtection } from "../lib/revenueScorer.js";
+import { scoreDeviceIntelligence } from "../lib/deviceScorer.js";
 
 const router = Router();
 
@@ -296,6 +298,63 @@ router.get("/overview", requireAuth, async (req, res) => {
       device_network: Math.round(trafficScoredSessions.reduce((acc, s) => acc + (s.trafficDeviceNetworkScore ?? 0), 0) / trafficScoredSessions.length),
     } : null;
 
+    // Revenue Protection Engine aggregations
+    const revScoredSessions = sessions.filter((s) => s.revenueProtectionScore != null);
+    const avgRevenueProtectionScore = revScoredSessions.length > 0
+      ? Math.round(revScoredSessions.reduce((acc, s) => acc + (s.revenueProtectionScore ?? 0), 0) / revScoredSessions.length)
+      : null;
+    const revTierMap: Record<string, number> = {};
+    for (const s of sessions) {
+      const tier = s.revenueRiskTier ?? "unscored";
+      revTierMap[tier] = (revTierMap[tier] ?? 0) + 1;
+    }
+    const revenueRiskTierBreakdown = [
+      { name: "safe",     label: "Safe",     value: revTierMap["safe"]     ?? 0 },
+      { name: "low",      label: "Low",      value: revTierMap["low"]      ?? 0 },
+      { name: "moderate", label: "Moderate", value: revTierMap["moderate"] ?? 0 },
+      { name: "elevated", label: "Elevated", value: revTierMap["elevated"] ?? 0 },
+      { name: "high",     label: "High",     value: revTierMap["high"]     ?? 0 },
+    ];
+    const avgRevenueScores = revScoredSessions.length > 0 ? {
+      revenue_protection: avgRevenueProtectionScore,
+      session_integrity:  Math.round(revScoredSessions.reduce((acc, s) => acc + (s.sessionIntegrityScore ?? 0), 0)       / revScoredSessions.length),
+      network_trust:      Math.round(revScoredSessions.reduce((acc, s) => acc + (s.networkTrustScore ?? 0), 0)           / revScoredSessions.length),
+      traffic_quality:    Math.round(revScoredSessions.reduce((acc, s) => acc + (s.revenueTrafficQualityScore ?? 0), 0)   / revScoredSessions.length),
+      behavioral:         Math.round(revScoredSessions.reduce((acc, s) => acc + (s.behavioralFinancialScore ?? 0), 0)     / revScoredSessions.length),
+      identity_signals:   Math.round(revScoredSessions.reduce((acc, s) => acc + (s.identitySignalsScore ?? 0), 0)        / revScoredSessions.length),
+    } : null;
+    const avgRiskScores = revScoredSessions.length > 0 ? {
+      chargeback_risk: Math.round(revScoredSessions.reduce((acc, s) => acc + (s.chargebackRiskScore ?? 0), 0) / revScoredSessions.length),
+      refund_abuse:    Math.round(revScoredSessions.reduce((acc, s) => acc + (s.refundAbuseScore ?? 0), 0)    / revScoredSessions.length),
+      promo_abuse:     Math.round(revScoredSessions.reduce((acc, s) => acc + (s.promoAbuseScore ?? 0), 0)     / revScoredSessions.length),
+      billing_anomaly: Math.round(revScoredSessions.reduce((acc, s) => acc + (s.billingAnomalyScore ?? 0), 0) / revScoredSessions.length),
+    } : null;
+
+    // Device Intelligence Engine aggregations
+    const devScoredSessions = sessions.filter((s) => s.deviceIntelScore != null);
+    const avgDeviceIntelScore = devScoredSessions.length > 0
+      ? Math.round(devScoredSessions.reduce((acc, s) => acc + (s.deviceIntelScore ?? 0), 0) / devScoredSessions.length)
+      : null;
+    const devTierMap: Record<string, number> = {};
+    for (const s of sessions) {
+      const tier = s.deviceRiskTier ?? "unscored";
+      devTierMap[tier] = (devTierMap[tier] ?? 0) + 1;
+    }
+    const deviceRiskTierBreakdown = [
+      { name: "clean",      label: "Clean",      value: devTierMap["clean"]      ?? 0 },
+      { name: "watch",      label: "Watch",       value: devTierMap["watch"]      ?? 0 },
+      { name: "suspicious", label: "Suspicious",  value: devTierMap["suspicious"] ?? 0 },
+      { name: "flagged",    label: "Flagged",     value: devTierMap["flagged"]    ?? 0 },
+      { name: "blocked",    label: "Blocked",     value: devTierMap["blocked"]    ?? 0 },
+    ];
+    const avgDeviceScores = devScoredSessions.length > 0 ? {
+      device_intel: avgDeviceIntelScore,
+      velocity:     Math.round(devScoredSessions.reduce((acc, s) => acc + (s.deviceVelocityScore ?? 0), 0)   / devScoredSessions.length),
+      fraud_rate:   Math.round(devScoredSessions.reduce((acc, s) => acc + (s.deviceFraudRateScore ?? 0), 0)  / devScoredSessions.length),
+      spread:       Math.round(devScoredSessions.reduce((acc, s) => acc + (s.deviceSpreadScore ?? 0), 0)      / devScoredSessions.length),
+      recurrence:   Math.round(devScoredSessions.reduce((acc, s) => acc + (s.deviceRecurrenceScore ?? 0), 0)  / devScoredSessions.length),
+    } : null;
+
     res.json({
       range,
       kpis: {
@@ -333,6 +392,11 @@ router.get("/overview", requireAuth, async (req, res) => {
       avg_human_scores: avgHumanScores,
       traffic_risk_tier_breakdown: trafficRiskTierBreakdown,
       avg_traffic_scores: avgTrafficScores,
+      revenue_risk_tier_breakdown: revenueRiskTierBreakdown,
+      avg_revenue_scores: avgRevenueScores,
+      avg_risk_scores: avgRiskScores,
+      device_risk_tier_breakdown: deviceRiskTierBreakdown,
+      avg_device_scores: avgDeviceScores,
     });
   } catch (err) {
     res.status(500).json({ detail: "Failed to load overview" });
@@ -1141,6 +1205,49 @@ router.post("/demo/seed", requireRole("admin"), async (req, res) => {
         trafficGeoScore: tGeo,
         trafficTemporalScore: tTemp,
         trafficDeviceNetworkScore: tDN,
+        // Revenue Protection Engine
+        ...((): object => {
+          const revScore = isFraud
+            ? Math.round(8 + Math.random() * 27)
+            : isSuspicious
+            ? Math.round(36 + Math.random() * 22)
+            : Math.round(66 + Math.random() * 28);
+          const revTier = revScore >= 80 ? "safe" : revScore >= 65 ? "low" : revScore >= 50 ? "moderate" : revScore >= 35 ? "elevated" : "high";
+          const revDec = revScore >= 80 ? "approve" : revScore >= 65 ? "approve_and_monitor" : revScore >= 50 ? "delay_fulfillment" : revScore >= 35 ? "step_up_verification" : "block_transaction";
+          const cbRisk = Math.round(Math.max(0, Math.min(100, (100 - revScore) * 0.8 + (Math.random() * 12 - 4))));
+          const refAbuse = Math.round(Math.max(0, Math.min(100, (100 - revScore) * 0.6 + (Math.random() * 12 - 4))));
+          const promoAbuse = Math.round(Math.max(0, Math.min(100, (100 - revScore) * 0.5 + (Math.random() * 12 - 4))));
+          const v = (d: number) => Math.round(Math.max(0, Math.min(100, revScore + d)));
+          return {
+            revenueProtectionScore: revScore, revenueRiskTier: revTier, revenueDecision: revDec,
+            chargebackRiskScore: cbRisk, refundAbuseScore: refAbuse, promoAbuseScore: promoAbuse,
+            billingAnomalyScore: Math.round(cbRisk * 0.4 + refAbuse * 0.3 + promoAbuse * 0.3),
+            sessionIntegrityScore: v(Math.random() * 20 - 10),
+            networkTrustScore: v(Math.random() * 18 - 9),
+            revenueTrafficQualityScore: v(Math.random() * 18 - 9),
+            behavioralFinancialScore: v(Math.random() * 16 - 8),
+            identitySignalsScore: v(Math.random() * 16 - 8),
+            revenueReasonCodes: isFraud ? ["bot_conversion_attempt", "datacenter_ip_risk"] : isSuspicious ? ["suspicious_session_quality"] : [],
+          };
+        })(),
+        // Device Intelligence Engine
+        ...((): object => {
+          const devScore = isFraud
+            ? Math.round(5 + Math.random() * 30)
+            : isSuspicious
+            ? Math.round(32 + Math.random() * 28)
+            : Math.round(65 + Math.random() * 30);
+          const devTier = devScore >= 80 ? "clean" : devScore >= 60 ? "watch" : devScore >= 40 ? "suspicious" : devScore >= 20 ? "flagged" : "blocked";
+          const v = (d: number) => Math.round(Math.max(0, Math.min(100, devScore + d)));
+          return {
+            deviceIntelScore: devScore, deviceRiskTier: devTier, deviceSessionCount: Math.floor(1 + Math.random() * 8),
+            deviceVelocityScore: v(Math.random() * 20 - 10),
+            deviceFraudRateScore: v(Math.random() * 20 - 10),
+            deviceSpreadScore: v(Math.random() * 16 - 8),
+            deviceRecurrenceScore: v(Math.random() * 16 - 8),
+            deviceReasonCodes: isFraud ? ["device_fraud_history", "high_device_velocity"] : isSuspicious ? ["elevated_device_velocity"] : [],
+          };
+        })(),
         startedAt,
       });
 
@@ -1264,7 +1371,31 @@ router.post("/collect", async (req, res) => {
       browser: parsedBrowser,
       os: parsedOs,
     });
-    const reasonCodes = [...new Set([...humanResult.reasonCodes, ...trafficResult.reasonCodes])];
+    // --- Revenue Protection Engine ---
+    const revenueResult = scoreRevenueProtection({
+      humanResult,
+      trafficResult,
+      signals: sig,
+      behavior: beh,
+      geo,
+      ip: clientIp || "",
+      utm: { source: utm.source, medium: utm.medium, campaign: utm.campaign },
+      eventType: body.event_type ?? "pageview",
+      conversionValue: body.conversion?.value ?? null,
+    });
+
+    // --- Device Intelligence Engine ---
+    const deviceResult = await scoreDeviceIntelligence({
+      fingerprintHash: body.fingerprint ?? null,
+      workspaceId: site.workspaceId,
+    });
+
+    const reasonCodes = [...new Set([
+      ...humanResult.reasonCodes,
+      ...trafficResult.reasonCodes,
+      ...revenueResult.reasonCodes,
+      ...deviceResult.reasonCodes,
+    ])];
 
     await db.insert(sessionsTable).values({
       id: randomUUID(),
@@ -1314,6 +1445,27 @@ router.post("/collect", async (req, res) => {
       trafficGeoScore: trafficResult.trafficGeoScore,
       trafficTemporalScore: trafficResult.trafficTemporalScore,
       trafficDeviceNetworkScore: trafficResult.trafficDeviceNetworkScore,
+      revenueProtectionScore: revenueResult.revenueProtectionScore,
+      chargebackRiskScore: revenueResult.chargebackRiskScore,
+      refundAbuseScore: revenueResult.refundAbuseScore,
+      promoAbuseScore: revenueResult.promoAbuseScore,
+      billingAnomalyScore: revenueResult.billingAnomalyScore,
+      revenueDecision: revenueResult.revenueDecision,
+      revenueRiskTier: revenueResult.revenueRiskTier,
+      sessionIntegrityScore: revenueResult.sessionIntegrityScore,
+      networkTrustScore: revenueResult.networkTrustScore,
+      revenueTrafficQualityScore: revenueResult.trafficQualityScore,
+      behavioralFinancialScore: revenueResult.behavioralFinancialScore,
+      identitySignalsScore: revenueResult.identitySignalsScore,
+      revenueReasonCodes: revenueResult.reasonCodes,
+      deviceIntelScore: deviceResult.deviceIntelScore,
+      deviceVelocityScore: deviceResult.deviceVelocityScore,
+      deviceFraudRateScore: deviceResult.deviceFraudRateScore,
+      deviceSpreadScore: deviceResult.deviceSpreadScore,
+      deviceRecurrenceScore: deviceResult.deviceRecurrenceScore,
+      deviceRiskTier: deviceResult.deviceRiskTier,
+      deviceSessionCount: deviceResult.sessionCount,
+      deviceReasonCodes: deviceResult.reasonCodes,
       startedAt: new Date(),
     }).onConflictDoNothing();
 
@@ -1349,10 +1501,179 @@ router.post("/collect", async (req, res) => {
         traffic_decision: trafficResult.trafficDecision,
         traffic_quality_score: trafficResult.trafficQualityScore,
         traffic_confidence: trafficResult.trafficConfidence,
+        revenue_protection_score: revenueResult.revenueProtectionScore,
+        revenue_risk_tier: revenueResult.revenueRiskTier,
+        revenue_decision: revenueResult.revenueDecision,
+        chargeback_risk_score: revenueResult.chargebackRiskScore,
+        refund_abuse_score: revenueResult.refundAbuseScore,
+        promo_abuse_score: revenueResult.promoAbuseScore,
+        device_intel_score: deviceResult.deviceIntelScore,
+        device_risk_tier: deviceResult.deviceRiskTier,
+        device_session_count: deviceResult.sessionCount,
       },
     });
   } catch (err) {
     res.status(500).json({ detail: "Collect failed", error: String(err) });
+  }
+});
+
+// ---------- Analytics & Operations ----------
+
+router.get("/analytics/health", requireAuth, async (req, res) => {
+  try {
+    const wid = wsId(req);
+    const siteFilter = req.query["site_id"] as string | undefined;
+
+    const now = new Date();
+    const cut1h  = new Date(now.getTime() -      60 * 60 * 1000);
+    const cut24h = new Date(now.getTime() -  24 * 60 * 60 * 1000);
+    const cut7d  = new Date(now.getTime() -   7 * 24 * 60 * 60 * 1000);
+    const cut30d = new Date(now.getTime() -  30 * 24 * 60 * 60 * 1000);
+
+    const sessions = await db
+      .select()
+      .from(sessionsTable)
+      .where(and(
+        eq(sessionsTable.workspaceId, wid),
+        gte(sessionsTable.startedAt, cut30d),
+        siteFilter ? eq(sessionsTable.siteId, siteFilter) : undefined,
+      ));
+
+    const s1h  = sessions.filter((s) => s.startedAt >= cut1h);
+    const s24h = sessions.filter((s) => s.startedAt >= cut24h);
+    const s7d  = sessions.filter((s) => s.startedAt >= cut7d);
+
+    function fraudRate(arr: typeof sessions) {
+      if (!arr.length) return 0;
+      return Math.round((arr.filter((s) => s.classification !== "trusted").length / arr.length) * 1000) / 10;
+    }
+    function avgScore(arr: typeof sessions) {
+      if (!arr.length) return null;
+      return Math.round(arr.reduce((a, s) => a + (s.trustScore ?? 0), 0) / arr.length);
+    }
+
+    const fraudRate1h  = fraudRate(s1h);
+    const fraudRate24h = fraudRate(s24h);
+    const fraudRate7d  = fraudRate(s7d);
+    const fraudRateChange = fraudRate7d > 0 ? Math.round(((fraudRate24h - fraudRate7d) / fraudRate7d) * 1000) / 10 : 0;
+
+    const vol1h  = s1h.length;
+    const vol24h = s24h.length;
+    const vol7dPerDay = s7d.length / 7;
+    const volChange = vol7dPerDay > 0 ? Math.round(((vol24h / 24 - vol7dPerDay / 24) / (vol7dPerDay / 24)) * 1000) / 10 : 0;
+
+    // Top fraud source in last 24h
+    const srcFraud: Record<string, number> = {};
+    for (const s of s24h) {
+      if (s.classification !== "trusted") {
+        srcFraud[s.source] = (srcFraud[s.source] ?? 0) + 1;
+      }
+    }
+    const topFraudSource = Object.entries(srcFraud).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "none";
+
+    // Top fraud country in last 24h
+    const cntFraud: Record<string, number> = {};
+    for (const s of s24h) {
+      if (s.classification !== "trusted" && s.country) {
+        cntFraud[s.country] = (cntFraud[s.country] ?? 0) + 1;
+      }
+    }
+    const topFraudCountry = Object.entries(cntFraud).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "Unknown";
+
+    // Hourly trend for last 24h (for sparkline)
+    const hourBuckets: Record<number, { trusted: number; bad: number }> = {};
+    for (let h = 0; h < 24; h++) hourBuckets[h] = { trusted: 0, bad: 0 };
+    for (const s of s24h) {
+      const hoursAgo = Math.floor((now.getTime() - s.startedAt.getTime()) / (60 * 60 * 1000));
+      const bucket = Math.min(23, hoursAgo);
+      const key = 23 - bucket;
+      if (hourBuckets[key]) {
+        if (s.classification === "trusted") hourBuckets[key]!.trusted++;
+        else hourBuckets[key]!.bad++;
+      }
+    }
+    const hourlyTrend = Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      trusted: hourBuckets[i]?.trusted ?? 0,
+      bad: hourBuckets[i]?.bad ?? 0,
+      total: (hourBuckets[i]?.trusted ?? 0) + (hourBuckets[i]?.bad ?? 0),
+      fraud_rate: hourBuckets[i]
+        ? (hourBuckets[i]!.trusted + hourBuckets[i]!.bad > 0
+          ? Math.round((hourBuckets[i]!.bad / (hourBuckets[i]!.trusted + hourBuckets[i]!.bad)) * 1000) / 10
+          : 0)
+        : 0,
+    }));
+
+    // Device intelligence aggregates (last 7d)
+    const devClean = s7d.filter((s) => s.deviceRiskTier === "clean").length;
+    const devBlocked = s7d.filter((s) => s.deviceRiskTier === "blocked").length;
+    const devFlagged = s7d.filter((s) => ["flagged", "blocked"].includes(s.deviceRiskTier ?? "")).length;
+
+    // Revenue protection aggregates (last 7d)
+    const revSafe = s7d.filter((s) => ["safe", "low"].includes(s.revenueRiskTier ?? "")).length;
+    const revHigh = s7d.filter((s) => ["elevated", "high"].includes(s.revenueRiskTier ?? "")).length;
+
+    // Anomaly detection
+    const alerts: Array<{ type: string; severity: "info" | "warning" | "critical"; message: string; value: number }> = [];
+
+    if (fraudRate1h > fraudRate7d + 15 && s1h.length >= 3) {
+      alerts.push({ type: "fraud_spike", severity: "critical", message: `Fraud rate spiked to ${fraudRate1h}% in the last hour (7d avg: ${fraudRate7d}%)`, value: fraudRate1h });
+    } else if (fraudRate1h > fraudRate7d + 8 && s1h.length >= 3) {
+      alerts.push({ type: "fraud_elevated", severity: "warning", message: `Fraud rate elevated at ${fraudRate1h}% this hour (7d avg: ${fraudRate7d}%)`, value: fraudRate1h });
+    }
+
+    if (vol1h > vol7dPerDay / 24 * 5 && vol1h >= 5) {
+      alerts.push({ type: "volume_spike", severity: "warning", message: `Session volume ${vol1h} in last hour is ${Math.round(vol1h / (vol7dPerDay / 24))}× the hourly average`, value: vol1h });
+    }
+
+    if (devFlagged > 0 && s7d.length > 0 && devFlagged / s7d.length > 0.15) {
+      alerts.push({ type: "device_risk", severity: "warning", message: `${Math.round(devFlagged / s7d.length * 100)}% of sessions from flagged or blocked devices`, value: devFlagged });
+    }
+
+    if (revHigh > 0 && s7d.length > 0 && revHigh / s7d.length > 0.2) {
+      alerts.push({ type: "revenue_risk", severity: "warning", message: `${Math.round(revHigh / s7d.length * 100)}% of sessions pose elevated revenue risk`, value: revHigh });
+    }
+
+    // Platform health score (0–100)
+    let healthScore = 100;
+    healthScore -= Math.min(30, fraudRate24h * 0.8);
+    healthScore -= Math.min(20, Math.max(0, fraudRateChange * 0.5));
+    healthScore -= alerts.filter((a) => a.severity === "critical").length * 10;
+    healthScore -= alerts.filter((a) => a.severity === "warning").length * 5;
+    healthScore = Math.round(Math.max(0, Math.min(100, healthScore)));
+
+    const fraudBurstLevel: string =
+      fraudRate1h >= fraudRate7d + 15 ? "critical"
+      : fraudRate1h >= fraudRate7d + 8 ? "spike"
+      : fraudRate1h >= fraudRate7d + 3 ? "elevated"
+      : "normal";
+
+    res.json({
+      health_score: healthScore,
+      fraud_burst_level: fraudBurstLevel,
+      alerts,
+      metrics: {
+        sessions_1h: vol1h,
+        sessions_24h: vol24h,
+        sessions_7d: s7d.length,
+        sessions_30d: sessions.length,
+        fraud_rate_1h: fraudRate1h,
+        fraud_rate_24h: fraudRate24h,
+        fraud_rate_7d: fraudRate7d,
+        fraud_rate_change: fraudRateChange,
+        volume_change: volChange,
+        avg_trust_score_7d: avgScore(s7d),
+        top_fraud_source: topFraudSource,
+        top_fraud_country: topFraudCountry,
+        device_clean_7d: devClean,
+        device_flagged_7d: devFlagged,
+        revenue_safe_7d: revSafe,
+        revenue_high_risk_7d: revHigh,
+      },
+      hourly_trend: hourlyTrend,
+    });
+  } catch (err) {
+    res.status(500).json({ detail: "Failed to load analytics health", error: String(err) });
   }
 });
 

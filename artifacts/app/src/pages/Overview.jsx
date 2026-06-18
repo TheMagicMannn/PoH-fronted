@@ -14,11 +14,18 @@ import { cn } from "@/lib/utils";
 import {
   Pulse, Prohibit, Coins, Target, ShieldWarning, Globe, Gauge, Certificate,
   DeviceMobile, Desktop, DeviceTablet, Browsers, Monitor, UserCircle, Brain, HardDrives, WifiHigh, ClockCountdown,
+  CurrencyDollar, Fingerprint, ChartLine, Warning, CheckCircle,
 } from "@phosphor-icons/react";
 
 const COLORS = { trusted: "#34D399", suspicious: "#FBBF24", fraudulent: "#F87171" };
 const TRAFFIC_TIER_COLORS = {
   low: "#34D399", medium: "#60A5FA", elevated: "#FBBF24", high: "#F87171", critical: "#DC2626",
+};
+const REVENUE_TIER_COLORS = {
+  safe: "#34D399", low: "#60A5FA", moderate: "#FBBF24", elevated: "#F87171", high: "#DC2626",
+};
+const DEVICE_TIER_COLORS = {
+  clean: "#34D399", watch: "#60A5FA", suspicious: "#FBBF24", flagged: "#F87171", blocked: "#DC2626",
 };
 
 // Reverse map: full country name → ISO-2 code (for seeded data compatibility)
@@ -96,6 +103,13 @@ export default function Overview() {
     queryFn: () => fetcher(`/overview?range=${range}${siteParam}`),
   });
 
+  const { data: analytics } = useQuery({
+    queryKey: ["analytics-health", siteId],
+    queryFn: () => fetcher(`/analytics/health${siteId ? `?site_id=${siteId}` : ""}`),
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+
   if (isLoading || !data) return <Spinner />;
   const k = data.kpis;
   const totalDist = data.distribution.reduce((s, d) => s + d.value, 0) || 1;
@@ -113,6 +127,14 @@ export default function Overview() {
   const avgTrafficScores = data.avg_traffic_scores;
   const totalTrafficTier = trafficTierBreakdown.reduce((s, d) => s + d.value, 0) || 1;
   const avgTrafficScore = k.avg_traffic_trust_score;
+
+  const revenueTierBreakdown = data.revenue_risk_tier_breakdown ?? [];
+  const avgRevenueScores = data.avg_revenue_scores;
+  const avgRiskScores = data.avg_risk_scores;
+  const totalRevenueTier = revenueTierBreakdown.reduce((s, d) => s + d.value, 0) || 1;
+  const deviceTierBreakdown = data.device_risk_tier_breakdown ?? [];
+  const avgDeviceScores = data.avg_device_scores;
+  const totalDeviceTier = deviceTierBreakdown.reduce((s, d) => s + d.value, 0) || 1;
 
   const maxGeoTotal = Math.max(...geoData.map((r) => r.total), 1);
   const maxDeviceTotal = Math.max(...deviceData.map((r) => r.total), 1);
@@ -643,6 +665,307 @@ export default function Overview() {
           )}
         </Card>
       </div>
+
+      {/* ── Revenue Protection Intelligence ── */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="p-5" data-testid="panel-revenue-tier">
+          <SectionTitle title="Revenue Protection Intelligence" desc="Financial fraud risk — chargeback, refund, promo abuse and billing anomaly scoring" icon={CurrencyDollar} />
+          {revenueTierBreakdown.some((d) => d.value > 0) ? (
+            <>
+              <div className="relative">
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie data={revenueTierBreakdown} dataKey="value" nameKey="label" innerRadius={52} outerRadius={76} paddingAngle={2} strokeWidth={0}>
+                      {revenueTierBreakdown.map((d) => (
+                        <Cell key={d.name} fill={REVENUE_TIER_COLORS[d.name] ?? "#475569"} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<ChartTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="font-mono text-xl font-semibold text-white">{fmtNum(totalRevenueTier)}</span>
+                  <span className="data-label">scored</span>
+                </div>
+              </div>
+              <div className="mt-2 space-y-1.5">
+                {[
+                  { name: "safe",     label: "Safe" },
+                  { name: "low",      label: "Low Risk" },
+                  { name: "moderate", label: "Moderate" },
+                  { name: "elevated", label: "Elevated" },
+                  { name: "high",     label: "High Risk" },
+                ].map(({ name, label }) => {
+                  const d = revenueTierBreakdown.find((x) => x.name === name);
+                  const color = REVENUE_TIER_COLORS[name];
+                  return (
+                    <div key={name} className="flex items-center gap-2 text-sm">
+                      <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ background: color }} />
+                      <span className="text-slate-300">{label}</span>
+                      <span className="ml-auto font-mono text-white tabular-nums">{fmtNum(d?.value ?? 0)}</span>
+                      <span className="w-12 text-right font-mono text-xs text-muted-foreground">
+                        {fmtPct(((d?.value ?? 0) / totalRevenueTier) * 100)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">No revenue protection scores in range. Run demo seed to populate.</p>
+          )}
+        </Card>
+
+        <Card className="p-5" data-testid="panel-revenue-subscores">
+          <SectionTitle title="Revenue Sub-Score Breakdown" desc="Average protection sub-scores and risk exposure across scored fleet" />
+          {avgRevenueScores ? (
+            <div className="space-y-0">
+              {[
+                { key: "session_integrity",  label: "Session Integrity",    weight: "25%", icon: ShieldWarning },
+                { key: "network_trust",       label: "Network Trust",        weight: "20%", icon: WifiHigh },
+                { key: "traffic_quality",     label: "Traffic Quality",      weight: "20%", icon: Gauge },
+                { key: "behavioral",          label: "Behavioral Financial", weight: "20%", icon: Brain },
+                { key: "identity_signals",    label: "Identity Signals",     weight: "15%", icon: Certificate },
+              ].map(({ key, label, weight, icon: Icon }) => {
+                const score = avgRevenueScores[key] ?? 0;
+                const color = score >= 75 ? "#34D399" : score >= 50 ? "#FBBF24" : "#F87171";
+                return (
+                  <div key={key} className="flex items-center gap-2.5 py-1.5">
+                    <Icon size={13} style={{ color }} className="shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-mono text-[11px] text-slate-400">{label}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] text-muted-foreground">{weight}</span>
+                          <span className="font-mono text-xs font-medium tabular-nums" style={{ color }}>{score}</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${score}%`, background: color, opacity: 0.8 }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {avgRiskScores && (
+                <div className="mt-3 pt-3 border-t border-white/8">
+                  <p className="font-mono text-[11px] text-slate-400 mb-2">Fleet-wide Risk Exposure</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { key: "chargeback_risk", label: "Chargeback" },
+                      { key: "refund_abuse",     label: "Refund Abuse" },
+                      { key: "promo_abuse",      label: "Promo Abuse" },
+                      { key: "billing_anomaly",  label: "Billing Anomaly" },
+                    ].map(({ key, label }) => {
+                      const score = avgRiskScores[key] ?? 0;
+                      const color = score >= 60 ? "#F87171" : score >= 35 ? "#FBBF24" : "#34D399";
+                      return (
+                        <div key={key} className="rounded bg-white/5 p-2">
+                          <p className="font-mono text-[10px] text-slate-500">{label}</p>
+                          <p className="font-mono text-sm font-medium mt-0.5" style={{ color }}>{score}</p>
+                          <p className="font-mono text-[9px] text-muted-foreground">avg risk</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <div className="mt-3 pt-3 border-t border-white/8 flex items-center justify-between">
+                <span className="font-mono text-[11px] text-slate-400">Composite Protection Score</span>
+                <span className={cn("font-mono text-sm font-bold tabular-nums",
+                  avgRevenueScores.revenue_protection >= 75 ? "text-trusted"
+                  : avgRevenueScores.revenue_protection >= 50 ? "text-suspicious" : "text-fraudulent"
+                )}>
+                  {avgRevenueScores.revenue_protection ?? "—"}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">No revenue scores in range. Run demo seed to populate.</p>
+          )}
+        </Card>
+      </div>
+
+      {/* ── Device Intelligence ── */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="p-5" data-testid="panel-device-tier">
+          <SectionTitle title="Device Intelligence" desc="Per-fingerprint velocity, historical fraud rate, geographic spread and recurrence" icon={Fingerprint} />
+          {deviceTierBreakdown.some((d) => d.value > 0) ? (
+            <>
+              <div className="relative">
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie data={deviceTierBreakdown} dataKey="value" nameKey="label" innerRadius={52} outerRadius={76} paddingAngle={2} strokeWidth={0}>
+                      {deviceTierBreakdown.map((d) => (
+                        <Cell key={d.name} fill={DEVICE_TIER_COLORS[d.name] ?? "#475569"} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<ChartTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="font-mono text-xl font-semibold text-white">{fmtNum(totalDeviceTier)}</span>
+                  <span className="data-label">devices</span>
+                </div>
+              </div>
+              <div className="mt-2 space-y-1.5">
+                {[
+                  { name: "clean",      label: "Clean" },
+                  { name: "watch",      label: "Watch List" },
+                  { name: "suspicious", label: "Suspicious" },
+                  { name: "flagged",    label: "Flagged" },
+                  { name: "blocked",    label: "Blocked" },
+                ].map(({ name, label }) => {
+                  const d = deviceTierBreakdown.find((x) => x.name === name);
+                  const color = DEVICE_TIER_COLORS[name];
+                  return (
+                    <div key={name} className="flex items-center gap-2 text-sm">
+                      <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ background: color }} />
+                      <span className="text-slate-300">{label}</span>
+                      <span className="ml-auto font-mono text-white tabular-nums">{fmtNum(d?.value ?? 0)}</span>
+                      <span className="w-12 text-right font-mono text-xs text-muted-foreground">
+                        {fmtPct(((d?.value ?? 0) / totalDeviceTier) * 100)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">No device intelligence scores in range. Run demo seed to populate.</p>
+          )}
+        </Card>
+
+        <Card className="p-5" data-testid="panel-device-subscores">
+          <SectionTitle title="Device Sub-Score Breakdown" desc="Average velocity, fraud rate, spread and recurrence across all fingerprints" />
+          {avgDeviceScores ? (
+            <div className="space-y-0">
+              {[
+                { key: "velocity",    label: "Velocity Control",   weight: "30%", icon: Pulse },
+                { key: "fraud_rate",  label: "Fraud Rate History", weight: "30%", icon: ShieldWarning },
+                { key: "spread",      label: "Geographic Spread",  weight: "20%", icon: Globe },
+                { key: "recurrence",  label: "Recurrence Pattern", weight: "20%", icon: ClockCountdown },
+              ].map(({ key, label, weight, icon: Icon }) => {
+                const score = avgDeviceScores[key] ?? 0;
+                const color = score >= 75 ? "#34D399" : score >= 50 ? "#FBBF24" : "#F87171";
+                return (
+                  <div key={key} className="flex items-center gap-2.5 py-1.5">
+                    <Icon size={13} style={{ color }} className="shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-mono text-[11px] text-slate-400">{label}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] text-muted-foreground">{weight}</span>
+                          <span className="font-mono text-xs font-medium tabular-nums" style={{ color }}>{score}</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${score}%`, background: color, opacity: 0.8 }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="mt-3 pt-3 border-t border-white/8 flex items-center justify-between">
+                <span className="font-mono text-[11px] text-slate-400">Composite Device Intel Score</span>
+                <span className={cn("font-mono text-sm font-bold tabular-nums",
+                  avgDeviceScores.device_intel >= 75 ? "text-trusted"
+                  : avgDeviceScores.device_intel >= 50 ? "text-suspicious" : "text-fraudulent"
+                )}>
+                  {avgDeviceScores.device_intel ?? "—"}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">No device scores in range. Run demo seed to populate.</p>
+          )}
+        </Card>
+      </div>
+
+      {/* ── Analytics & Operations ── */}
+      {analytics && (
+        <Card className="p-5" data-testid="panel-analytics-health">
+          <SectionTitle title="Analytics & Operations" desc="Real-time platform health, anomaly detection and operational alerts" icon={ChartLine} />
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Health score + burst level */}
+            <div className="flex flex-col items-center justify-center gap-3">
+              <div className="relative flex h-36 w-36 items-center justify-center rounded-full border-4"
+                style={{ borderColor: analytics.health_score >= 80 ? "#34D399" : analytics.health_score >= 60 ? "#FBBF24" : "#F87171" }}>
+                <div className="text-center">
+                  <p className="font-mono text-4xl font-bold text-white">{analytics.health_score}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground">health score</p>
+                </div>
+              </div>
+              <div className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
+                analytics.fraud_burst_level === "normal"   ? "bg-trusted/15 text-trusted"
+                : analytics.fraud_burst_level === "elevated" ? "bg-suspicious/15 text-suspicious"
+                : "bg-fraudulent/15 text-fraudulent"
+              )}>
+                {analytics.fraud_burst_level === "normal"
+                  ? <CheckCircle size={11} />
+                  : <Warning size={11} />}
+                {analytics.fraud_burst_level} burst level
+              </div>
+            </div>
+
+            {/* Key metrics grid */}
+            <div className="grid grid-cols-2 gap-2 content-start">
+              {analytics.metrics && [
+                { key: "sessions_1h",       label: "Sessions / 1h",    fmt: fmtNum },
+                { key: "fraud_rate_24h",    label: "Fraud Rate 24h",   fmt: (v) => `${v?.toFixed(1)}%` },
+                { key: "blocked_24h",       label: "Blocked 24h",      fmt: fmtNum },
+                { key: "avg_score_24h",     label: "Avg Score 24h",    fmt: (v) => v?.toFixed(0) ?? "—" },
+                { key: "revenue_risk_24h",  label: "Revenue At-Risk",  fmt: (v) => `${v?.toFixed(0)} sessions` },
+                { key: "device_flagged_24h",label: "Devices Flagged",  fmt: fmtNum },
+              ].map(({ key, label, fmt }) => (
+                <div key={key} className="rounded bg-white/5 p-2">
+                  <p className="font-mono text-[10px] text-slate-500">{label}</p>
+                  <p className="font-mono text-sm font-semibold text-white mt-0.5">{fmt(analytics.metrics[key])}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Alerts */}
+            <div>
+              <p className="font-mono text-[11px] text-slate-400 mb-2">Active Alerts</p>
+              {analytics.alerts && analytics.alerts.length > 0 ? (
+                <div className="space-y-1.5">
+                  {analytics.alerts.slice(0, 5).map((alert, i) => (
+                    <div key={i} className={cn("flex items-start gap-2 rounded px-2 py-1.5 text-xs",
+                      alert.level === "critical" ? "bg-fraudulent/10 border border-fraudulent/20"
+                      : alert.level === "high"   ? "bg-suspicious/10 border border-suspicious/20"
+                      : "bg-white/5 border border-white/8"
+                    )}>
+                      <Warning size={11} className="mt-0.5 shrink-0"
+                        style={{ color: alert.level === "critical" ? "#F87171" : alert.level === "high" ? "#FBBF24" : "#60A5FA" }} />
+                      <span className="text-slate-300 leading-tight">{alert.message}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded px-2 py-1.5 bg-trusted/10 border border-trusted/20">
+                  <CheckCircle size={11} className="text-trusted shrink-0" />
+                  <span className="text-xs text-trusted">All systems nominal — no active alerts</span>
+                </div>
+              )}
+              {analytics.hourly_trend && analytics.hourly_trend.length > 0 && (
+                <div className="mt-3">
+                  <p className="font-mono text-[10px] text-slate-500 mb-1">24h Fraud Rate Trend</p>
+                  <ResponsiveContainer width="100%" height={48}>
+                    <BarChart data={analytics.hourly_trend} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barSize={4} barGap={1}>
+                      <Bar dataKey="fraud_rate" radius={[2, 2, 0, 0]}>
+                        {analytics.hourly_trend.map((h, i) => (
+                          <Cell key={i} fill={h.fraud_rate >= 20 ? "#F87171" : h.fraud_rate >= 10 ? "#FBBF24" : "#34D399"} fillOpacity={0.8} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
